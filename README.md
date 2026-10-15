@@ -19,4 +19,4 @@ Single static `index.html`. Three.js r128 loads from jsDelivr. No build step.
 Live: https://capelsoundinvitational.vercel.app (pushes to `main` deploy automatically)
 
 ## Leaderboard
-Skippers enter their name and boat name. Finishing times post to a Supabase table (`supabase/leaderboard.sql`). It stays off until `LB.url` and `LB.key` are set in `index.html`.
+Skippers enter their name and boat name. Finishing times post to a Supabase table (`supabase/leaderboard.sql`). Supabase project M2 Projects. The leaderboard only runs on the vercel.app domain (`LB` in `index.html`); the publishable key is public by design and the table only allows reading and adding scores.

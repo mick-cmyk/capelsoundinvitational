@@ -1062,14 +1062,14 @@ const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 let myTag=null;
 function setMyTag(){if(myTag)scene.remove(myTag);myTag=sprite([{t:ME.boat||'You',font:`800 30px ${UI_FONT}`,color:'#16202a'}],.022,{bg:'#f5c518',pad:12,radius:10},true);scene.add(myTag);}
 /* ---------- leaderboard (Supabase; switched off until LB.url and LB.key are set) ---------- */
-const LB={url:'',key:''};
+const LB=/vercel\.app$|localhost|test\.local/.test(location.hostname)?{url:'https://qvnmvyfmbxgrghhxlqcl.supabase.co',key:'sb_publishable_lmXrkE_GuVvAoyuW8CFbWw_81e05Q92'}:{url:'',key:''};
 const lbOn=()=>!!(LB.url&&LB.key);
 async function lbFetch(cls,wind){if(!lbOn())return null;
-  try{const r=await fetch(`${LB.url}/rest/v1/csi_scores?select=skipper,boat_name,time_s,place,created_at&class=eq.${cls}&wind=eq.${wind}&order=time_s.asc&limit=10`,{headers:{apikey:LB.key,Authorization:'Bearer '+LB.key}});
+  try{const r=await fetch(`${LB.url}/rest/v1/csi_scores?select=skipper,boat_name,time_s,place,created_at&class=eq.${cls}&wind=eq.${wind}&order=time_s.asc&limit=10`,{headers:{apikey:LB.key}});
     if(!r.ok)return null;return await r.json();}catch(e){return null;}}
 async function lbSubmit(row){if(!lbOn())return false;
-  try{const r=await fetch(`${LB.url}/rest/v1/csi_scores`,{method:'POST',headers:{apikey:LB.key,Authorization:'Bearer '+LB.key,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(row)});return r.ok;}catch(e){return false;}}
-function lbHTML(rows,hl){if(!lbOn())return '<p class="note">The online leaderboard is not switched on yet. Your personal best is kept on this device.</p>';
+  try{const r=await fetch(`${LB.url}/rest/v1/csi_scores`,{method:'POST',headers:{apikey:LB.key,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(row)});return r.ok;}catch(e){return false;}}
+function lbHTML(rows,hl){if(!lbOn())return '<p class="note">The online leaderboard runs on capelsoundinvitational.vercel.app. Your personal best is kept on this device.</p>';
   if(rows===null)return '<p class="note">Could not reach the leaderboard. Check your connection.</p>';
   if(!rows.length)return '<p class="note">No times yet for this boat and wind. Be the first.</p>';
   return `<ol class="fleet lb">${rows.map((r,i)=>`<li class="${hl&&hl(r)?'me':''}"><b>${i+1}</b><i style="background:var(--sea)"></i><span>${esc(r.boat_name)} <small>${esc(r.skipper)}</small></span><em>${fmt(+r.time_s)}</em></li>`).join('')}</ol>`;}
