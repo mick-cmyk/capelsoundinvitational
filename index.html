@@ -166,6 +166,12 @@ h1{font:italic 400 52px/.88 var(--font-display);margin:0;letter-spacing:-.015em}
 .stats b{font:700 20px/1 var(--font-mono);font-variant-numeric:tabular-nums}
 .stats span{font:700 9.5px/1.2 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .note{font-size:12px;color:var(--muted);margin:12px 0 0}
+.evt{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;margin-top:10px}
+.evt label{font:600 12px/1.2 var(--font-ui);color:var(--muted)}
+.evt input{font:600 14px/1.2 var(--font-ui);padding:8px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--chip);color:var(--fg);min-width:0;-webkit-user-select:text;user-select:text}
+.evt .note{grid-column:1/-1;margin:0}
+.wchip.real{border-style:dashed}.wchip[disabled]{opacity:.45;cursor:default}
+.cta:disabled{opacity:.5;cursor:default}
 .names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .names label{display:grid;gap:5px;font:600 12px/1.2 var(--font-ui);color:var(--muted)}
 .names input{font:600 15px/1.2 var(--font-ui);padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--chip);color:var(--fg);min-width:0;-webkit-user-select:text;user-select:text}
@@ -667,10 +673,29 @@ const WPRESET={
   moderate:{name:'Moderate',sub:'9–17 kn',spd:[12,13],amp:7,shift:15,max:30,gN:12,mul:[.7,1.35]},
   fresh:{name:'Fresh',sub:'15–24 kn',spd:[18,20],amp:6,shift:12,max:26,gN:14,mul:[.8,1.25]},
   building:{name:'Building',sub:'8 → 20 kn',spd:[8,8],amp:7,shift:14,max:28,gN:12,build:20,mul:[.85,1.15]},
-  shifty:{name:'Shifty',sub:'big swings',spd:[10,15],amp:13,shift:26,max:45,gN:16,mul:[.6,1.5]}
+  shifty:{name:'Shifty',sub:'big swings',spd:[10,15],amp:13,shift:26,max:45,gN:16,mul:[.6,1.5]},
+  live:{name:'Live now',sub:'loading…',spd:[12,12],amp:7,shift:12,max:20,gN:12,mul:[.8,1.2],real:1,off:1},
+  event:{name:'Event forecast',sub:'set a time',spd:[12,12],amp:7,shift:12,max:20,gN:12,mul:[.8,1.2],real:1,off:1}
 };
+/* real wind for Capel Sound from Open-Meteo (model data: current hour + 16-day hourly forecast) */
+const WX={now:null,hours:null,err:null,loading:false,evt:null};
+const WX_URL='https://api.open-meteo.com/v1/forecast?latitude=-38.37&longitude=144.88&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kn&timezone=Australia%2FMelbourne&forecast_days=16';
+function wxPreset(key,spd,dir,gust){const c=WPRESET[key],g=clamp((gust||spd*1.3)/Math.max(spd,1),1.05,2);
+  Object.assign(c,{spd:[spd,spd],dir,gust,gk:clamp((g-1)*1.6,.35,1.6),gN:Math.round(clamp(8+(g-1)*16,8,18)),off:spd<1});c.sub=`${compass(dir)} ${Math.round(spd)} kn${gust?', gusts '+Math.round(gust):''}`;}
+async function fetchWx(){if(WX.loading)return;WX.loading=true;
+  try{const r=await fetch(WX_URL);if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
+    WX.now=j.current;WX.hours=j.hourly;wxPreset('live',j.current.wind_speed_10m,j.current.wind_direction_10m,j.current.wind_gusts_10m);WX.err=null;setEvent(WX.evt);}
+  catch(e){WX.err='Weather unavailable here';WPRESET.live.sub='unavailable';WPRESET.event.sub='unavailable';}
+  WX.loading=false;if(typeof wxUI==='function')wxUI();}
+function setEvent(iso){WX.evt=iso||null;const c=WPRESET.event;c.when=null;
+  if(!iso){c.off=1;c.sub='set a time';return;}
+  if(!WX.hours){c.off=1;c.sub=WX.err?'unavailable':'loading…';return;}
+  const tgt=iso.slice(0,13),i=WX.hours.time.findIndex(t=>t.slice(0,13)===tgt);
+  if(i<0){c.off=1;c.sub='outside the 16-day forecast';return;}
+  wxPreset('event',WX.hours.wind_speed_10m[i],WX.hours.wind_direction_10m[i],WX.hours.wind_gusts_10m[i]);c.when=WX.hours.time[i];}
+const lbWind=k=>{const c=WPRESET[k];if(!c.real)return k;const v=c.spd[0];return v<10?'light':v<16?'moderate':'fresh';};
 const W={dir0:240,spd0:12,dir:240,spd:12,t:0,shift:0,shiftT:0,nextShift:40,amp:7,per:80,ph:0,sper:55,mul:1,mulT:1,trend:0,cfg:WPRESET.moderate};
-function resetWind(key){const c=WPRESET[key];W.cfg=c;W.dir0=200+Math.random()*120;W.spd0=lerp(c.spd[0],c.spd[1],Math.random());W.amp=c.amp;W.per=60+Math.random()*40;W.ph=Math.random()*TAU;W.sper=40+Math.random()*30;
+function resetWind(key){if(WPRESET[key].off)key='moderate';const c=WPRESET[key];W.cfg=c;W.dir0=c.dir!=null?c.dir:200+Math.random()*120;W.spd0=lerp(c.spd[0],c.spd[1],Math.random());W.amp=c.amp;W.per=60+Math.random()*40;W.ph=Math.random()*TAU;W.sper=40+Math.random()*30;
   W.shift=W.shiftT=0;W.t=0;if(typeof WV!=='undefined')WV.ang=W.dir0+180;W.nextShift=22+Math.random()*15;W.dir=W.dir0;W.spd=W.spd0;W.mul=W.mulT=1;W.trend=(Math.random()-.5)*.09;
   GUSTS.forEach(g=>spawnGust(g,true));}
 function updateWind(dt){W.t+=dt;const c=W.cfg;
@@ -688,7 +713,7 @@ const GUSTS=[];
 function spawnGust(g,anywhere){const up=(W.dir)*D2R;
   if(anywhere){g.x=lerp(X0+10,X1-10,Math.random());g.z=lerp(Z0+5,30,Math.random());}
   else{const cx=(X0+X1)/2,cz=-20;g.x=cx+Math.sin(up)*120+(Math.random()-.5)*200;g.z=cz-Math.cos(up)*120+(Math.random()-.5)*130;}
-  g.r=6+Math.random()*11;g.k=Math.random()<.7?.22+Math.random()*.25:-(.18+Math.random()*.17);g.ds=(Math.random()-.5)*14;g.age=0;g.life=45+Math.random()*50;return g;}
+  g.r=6+Math.random()*11;g.k=(Math.random()<.7?.22+Math.random()*.25:-(.18+Math.random()*.17))*(W.cfg.gk||1);g.ds=(Math.random()-.5)*14;g.age=0;g.life=45+Math.random()*50;return g;}
 for(let i=0;i<18;i++)GUSTS.push(spawnGust({},true));
 function updateGusts(dt){const to=(W.dir+180)*D2R,vx=Math.sin(to)*W.spd*K*1.15,vz=-Math.cos(to)*W.spd*K*1.15,n=W.cfg.gN;
   GUSTS.forEach((g,i)=>{g.age+=dt;g.x+=vx*dt;g.z+=vz*dt;g.on=i<n;
@@ -721,7 +746,7 @@ function makeLegs(laps,d=1){const k=['start'];for(let i=0;i<laps;i++){k.push('ga
 const LEGS=makeLegs(1,1);
 function courseSpeed(B,tws){const va=vmgAngles(B,tws),up=polar(B,va.up,tws)*Math.cos(va.up*D2R),dn=-polar(B,va.down,tws)*Math.cos(va.down*D2R),rc=polar(B,90,tws);return 4/(1/up+1/dn+2/rc);}
 function lapsAt(tws){const ref=courseSpeed(BOATS.sabre,tws),o={};for(const id in BOATS)o[id]=clamp(Math.round(courseSpeed(BOATS[id],tws)/ref),1,2);return o;}
-function presetWind(key){const c=WPRESET[key],m=(c.spd[0]+c.spd[1])/2;return c.build?(m+c.build)/2:m;}
+function presetWind(key){if(!WPRESET[key]||WPRESET[key].off)key='moderate';const c=WPRESET[key],m=(c.spd[0]+c.spd[1])/2;return c.build?(m+c.build)/2:m;}
 const S={mode:'menu',t:0,fleet:lsGet('p2p-fleet')===-1?-1:1,fd:1,boat:lsGet('p2p-boat')||'sabre',wind:lsGet('p2p-wind')||'moderate',leg:0,gunAt:0,raceStart:0,finishT:0,ocs:false,
   groundings:0,touches:0,pierHits:0,penalties:0,penServed:0,dist:0,roundAcc:0,lastBrg:null,lay:true,camMode:'chase',overview:false,paused:false};
 const b={x:-100,z:-1,h:0,v:0,tws:12,twd:240,twa:90,side:1,aground:false,depth:5,auto:null,penDeg:0,penTurn:0,heel:0,boom:30,flip:1};
@@ -1144,7 +1169,7 @@ function boatThumb(id){const c=document.createElement('canvas');c.width=240;c.he
 const ME={skipper:lsGet('p2p-skipper')||'',boat:lsGet('p2p-boatname')||''};
 const clean=(v,n)=>String(v||'').replace(/[<>]/g,'').replace(/\s+/g,' ').trim().slice(0,n);
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let myTag=null;
+let myTag=null,wxUI=null;
 function setMyTag(){if(myTag)scene.remove(myTag);myTag=sprite([{t:ME.boat||'You',font:`800 30px ${UI_FONT}`,color:'#16202a'}],.022,{bg:'#f5c518',pad:12,radius:10},true);scene.add(myTag);}
 /* ---------- leaderboard (Supabase; switched off until LB.url and LB.key are set) ---------- */
 const LB=/vercel\.app$|localhost|test\.local/.test(location.hostname)?{url:'https://qvnmvyfmbxgrghhxlqcl.supabase.co',key:'sb_publishable_lmXrkE_GuVvAoyuW8CFbWw_81e05Q92'}:{url:'',key:''};
@@ -1158,7 +1183,7 @@ function lbHTML(rows,hl){if(!lbOn())return '<p class="note">The online leaderboa
   if(rows===null)return '<p class="note">Could not reach the leaderboard. Check your connection.</p>';
   if(!rows.length)return '<p class="note">No times yet for this boat and wind. Be the first.</p>';
   return `<ol class="fleet lb">${rows.map((r,i)=>`<li class="${hl&&hl(r)?'me':''}"><b>${i+1}</b><i style="background:var(--sea)"></i><span>${esc(r.boat_name)} <small>${esc(r.skipper)}</small></span><em>${fmt(+r.time_s)}</em></li>`).join('')}</ol>`;}
-async function showBoard(elId,hl){const el=$(elId);if(!el)return;el.innerHTML=lbOn()?'<p class="note">Loading times…</p>':lbHTML();if(!lbOn())return;const rows=await lbFetch(S.boat,S.wind,FLEETS[S.fleet].key);if($(elId)===el)el.innerHTML=lbHTML(rows,hl);}
+async function showBoard(elId,hl){const el=$(elId);if(!el)return;el.innerHTML=lbOn()?'<p class="note">Loading times…</p>':lbHTML();if(!lbOn())return;const rows=await lbFetch(S.boat,lbWind(S.wind),FLEETS[S.fleet].key);if($(elId)===el)el.innerHTML=lbHTML(rows,hl);}
 function showMenu(){S.mode='menu';modal.hidden=false;['panel','cluster','camctl','steer','tackbtn','keys','alert','bigclock'].forEach(id=>$(id).hidden=true);$('count').hidden=true;
   const best=lsGet('p2p-best')||{};
   sheet.innerHTML=`<p class="eyebrow">Southern Port Phillip · 2026</p><h2 id="sheetTitle">Capel Sound Invitational 2026</h2>
@@ -1167,7 +1192,8 @@ function showMenu(){S.mode='menu';modal.hidden=false;['panel','cluster','camctl'
   <h3>Skipper</h3><div class="names"><label>Your name<input id="pname" maxlength="24" autocomplete="nickname" placeholder="e.g. Mick R" value="${esc(ME.skipper)}"></label><label>Boat name<input id="bname" maxlength="20" placeholder="e.g. Wet Dream" value="${esc(ME.boat)}"></label></div>
   <h3>Boat</h3><div class="opts" role="radiogroup" aria-label="Boat">${Object.values(BOATS).map(B=>`<button class="opt" role="radio" aria-checked="${S.boat===B.id}" data-boat="${B.id}"><span class="th" data-th="${B.id}"></span><b>${B.name}</b><span>${B.kind}. ${B.traits.join('. ')}.</span></button>`).join('')}</div>
   <h3>Start from</h3><div class="chips" role="radiogroup" aria-label="Start end">${[[1,'Rye end','round Rosebud mark'],[-1,'Rosebud end','round Rye mark']].map(([v,t,s])=>`<button class="wchip" role="radio" aria-checked="${S.fleet===v}" data-fleet="${v}">${t}<small>${s}</small></button>`).join('')}</div>
-  <h3>Wind</h3><div class="chips" role="radiogroup" aria-label="Wind">${Object.entries(WPRESET).map(([k,w])=>`<button class="wchip" role="radio" aria-checked="${S.wind===k}" data-wind="${k}">${w.name}<small>${w.sub}</small></button>`).join('')}</div>
+  <h3>Wind</h3><div class="chips" role="radiogroup" aria-label="Wind" id="windChips"></div>
+  <div class="evt"><label for="evtTime">Event time</label><input type="datetime-local" id="evtTime" step="3600"><span class="note" id="wxNote"></span></div>
   <h3>Controls</h3><div class="ctrls">${coarse?`<kbd>◀ ▶</kbd><span>Hold to steer</span><kbd>Tack / gybe</kbd><span>Turn through the wind onto the other side</span><kbd>Pinch</kbd><span>Zoom in and out; drag to look around</span><kbd>Restart</kbd><span>Top of the race card, tap twice</span>`:
    `<kbd>← →</kbd><span>Steer (or A / D)</span><kbd>R</kbd><span>Restart the race (press twice)</span><kbd>Space</kbd><span>Tack or gybe onto the other side</span><kbd>Scroll · + −</kbd><span>Zoom in and out; drag to look around</span><kbd>V · C</kbd><span>Whole course view · camera mode</span>`}</div>
   <p class="note" id="lapNote"></p><p class="note" id="bestNote"></p><h3 id="lbHead">Leaderboard</h3><div id="lbMenu"></div>
@@ -1177,7 +1203,14 @@ function showMenu(){S.mode='menu';modal.hidden=false;['panel','cluster','camctl'
   const upd=()=>{const k=S.boat+'-'+S.wind,L=lapsAt(presetWind(S.wind));$('lbHead').textContent=`Leaderboard · ${BOATS[S.boat].name}, ${WPRESET[S.wind].name.toLowerCase()} wind, from ${FLEETS[S.fleet].name}`;showBoard('lbMenu');$('lapNote').textContent='Laps in '+WPRESET[S.wind].name.toLowerCase()+' wind: '+Object.values(BOATS).map(B=>B.name+' '+L[B.id]).join(' · ');$('bestNote').textContent=best[k]?`Your best in a ${BOATS[S.boat].name}, ${WPRESET[S.wind].name.toLowerCase()} wind: ${fmt(best[k])}`:'';};upd();
   sheet.querySelectorAll('[data-boat]').forEach(el=>el.onclick=()=>{S.boat=el.dataset.boat;lsSet('p2p-boat',S.boat);sheet.querySelectorAll('[data-boat]').forEach(x=>x.setAttribute('aria-checked',x===el));setBoat(S.boat);placeAtStart();upd();});
   sheet.querySelectorAll('[data-fleet]').forEach(el=>el.onclick=()=>{S.fleet=+el.dataset.fleet;lsSet('p2p-fleet',S.fleet);sheet.querySelectorAll('[data-fleet]').forEach(x=>x.setAttribute('aria-checked',x===el));placeAtStart();upd();});
-  sheet.querySelectorAll('[data-wind]').forEach(el=>el.onclick=()=>{S.wind=el.dataset.wind;lsSet('p2p-wind',S.wind);sheet.querySelectorAll('[data-wind]').forEach(x=>x.setAttribute('aria-checked',x===el));upd();});
+  wxUI=()=>{const box=$('windChips');if(!box)return;if(WPRESET[S.wind]?.off&&!WX.loading&&S.wind!=='event')S.wind=S.wind==='live'?'moderate':S.wind;
+    box.innerHTML=Object.entries(WPRESET).map(([k,w])=>`<button class="wchip${w.real?' real':''}" role="radio" aria-checked="${S.wind===k}" data-wind="${k}"${w.off&&k!=='event'?' disabled':''}>${w.name}<small>${w.sub}</small></button>`).join('');
+    box.querySelectorAll('[data-wind]').forEach(el=>el.onclick=()=>{S.wind=el.dataset.wind;lsSet('p2p-wind',S.wind);if(S.wind==='event'&&!WX.evt)$('evtTime').focus();wxUI();upd();});
+    const n=$('wxNote');if(n)n.textContent=WX.err?'Live weather could not be loaded here. It works on capelsoundinvitational.vercel.app.':WX.now?`Capel Sound now: ${WPRESET.live.sub} (Open-Meteo forecast model, updated hourly).${WPRESET.event.when?' Event: '+new Date(WPRESET.event.when).toLocaleString('en-AU',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+', '+WPRESET.event.sub+'.':''}`:'Loading Capel Sound wind…';
+    $('go').disabled=WPRESET[S.wind]?.off;};
+  const ev=$('evtTime');ev.value=(WX.evt||'').slice(0,16);
+  ev.onchange=()=>{const v=ev.value?ev.value.slice(0,13)+':00':'';lsSet('p2p-event',v);setEvent(v);if(v){S.wind='event';lsSet('p2p-wind','event');}wxUI();upd();};
+  wxUI();if(!WX.now&&!WX.err)fetchWx();
   const saveNames=()=>{ME.skipper=clean($('pname').value,24);ME.boat=clean($('bname').value,20);lsSet('p2p-skipper',ME.skipper);lsSet('p2p-boatname',ME.boat);};
   $('pname').oninput=$('bname').oninput=saveNames;
   $('go').onclick=()=>{saveNames();startRace();};
@@ -1192,7 +1225,7 @@ function showResults(){modal.hidden=false;const best=lsGet('p2p-best')||{},k=S.b
   <button class="cta" id="again">Sail again</button><button class="cta dark" id="change">Change boat or wind</button>`;
   renderFleet();
   const mine=r=>r.boat_name===(ME.boat||'Unnamed')&&r.skipper===(ME.skipper||'Anonymous')&&Math.abs(+r.time_s-S.final)<.06;
-  if(!S.submitted&&lbOn()){S.submitted=true;lbSubmit({start_end:FLEETS[S.fleet].key,skipper:ME.skipper||'Anonymous',boat_name:ME.boat||'Unnamed',class:S.boat,wind:S.wind,laps:S.laps[S.boat],time_s:+S.final.toFixed(1),place:S.place}).then(()=>showBoard('lbRes',mine));}else showBoard('lbRes',mine);
+  if(!S.submitted&&lbOn()){S.submitted=true;lbSubmit({start_end:FLEETS[S.fleet].key,skipper:ME.skipper||'Anonymous',boat_name:ME.boat||'Unnamed',class:S.boat,wind:lbWind(S.wind),laps:S.laps[S.boat],time_s:+S.final.toFixed(1),place:S.place}).then(()=>showBoard('lbRes',mine));}else showBoard('lbRes',mine);
   $('again').onclick=()=>startRace();$('change').onclick=()=>{showMenu();placeAtStart();};}
 
 function renderFleet(){const el=$('fleetRes');if(!el||modal.hidden)return;
@@ -1203,6 +1236,7 @@ setInterval(()=>{if(S.mode==='finished')renderFleet();},1000);
 /* ---------- loop ---------- */
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);resize();
+{const q=new URLSearchParams(location.search).get('event'),v=(q||lsGet('p2p-event')||'').replace(' ','T');if(/^\d{4}-\d\d-\d\dT\d\d/.test(v)){WX.evt=v.slice(0,13)+':00';if(q){S.wind='event';lsSet('p2p-event',WX.evt);}}}
 setBoat(S.boat);resetWind(S.wind);placeAtStart();renderLegs();
 let last=performance.now(),clock=0;
 function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;

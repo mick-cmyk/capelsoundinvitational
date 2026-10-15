@@ -20,3 +20,6 @@ Live: https://capelsoundinvitational.vercel.app (pushes to `main` deploy automat
 
 ## Leaderboard
 Skippers enter their name and boat name. Finishing times post to a Supabase table (`supabase/leaderboard.sql`). Supabase project M2 Projects. The leaderboard only runs on the vercel.app domain (`LB` in `index.html`); the publishable key is public by design and the table only allows reading and adding scores.
+
+## Real wind
+Wind options include **Live now** (current Capel Sound wind) and **Event forecast** (hourly forecast for a chosen time, up to 16 days out), both from Open-Meteo. Share a link with the race time set: `https://capelsoundinvitational.vercel.app/?event=2026-10-25T14:00`.
