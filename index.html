@@ -129,7 +129,14 @@ h1{font:italic 400 52px/.88 var(--font-display);margin:0;letter-spacing:-.015em}
   padding:9px 14px 8px;border-radius:8px;background:var(--warn);color:#16202a;pointer-events:none;white-space:nowrap}
 .alert.danger{background:var(--danger);color:#fff;animation:blink .6s steps(2) infinite}
 @keyframes blink{50%{opacity:.6}}
-.count{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font:italic 400 120px/1 var(--font-display);color:#fff;text-shadow:0 6px 30px rgba(0,0,0,.35);pointer-events:none}
+.count{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);font:italic 400 clamp(150px,42vmin,380px)/1 var(--font-display);color:#fff;text-shadow:0 8px 40px rgba(0,0,0,.45);pointer-events:none;font-variant-numeric:tabular-nums}
+.count.go{color:var(--accent);font-size:clamp(110px,30vmin,280px)}
+.count.pop{animation:pop .9s ease-out}
+@keyframes pop{0%{transform:translate(-50%,-50%) scale(1.25);opacity:.4}25%{opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+.bigclock{position:absolute;left:50%;top:max(16px,env(safe-area-inset-top,0px));transform:translateX(-50%);display:grid;justify-items:center;gap:4px;padding:10px 22px 12px;border-radius:18px;
+  background:rgba(14,22,30,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;pointer-events:none}
+.bigclock b{font:700 clamp(44px,10vmin,84px)/1 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.bigclock small{font:700 10px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;opacity:.8}
 
 .modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(14,22,30,.38);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
   padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -199,6 +206,30 @@ h1{font:italic 400 52px/.88 var(--font-display);margin:0;letter-spacing:-.015em}
   .sheet h2{font-size:36px}
   .count{font-size:84px}
 }
+.pad .lbl{display:block}
+@media (max-width:760px){.bigclock{top:calc(max(10px,env(safe-area-inset-top,0px)) + 150px)}}
+@media (max-height:520px) and (orientation:landscape){
+  .masthead,.keys{display:none!important}
+  .panel{top:max(8px,env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));left:auto;width:230px;max-height:none;padding:7px 9px;gap:5px;border-radius:12px}
+  .panel .label{font-size:9px}.chip{font-size:11px;padding:4px 7px 3px}.rst{font-size:10px;padding:4px 7px 3px}
+  .route{grid-template-columns:repeat(var(--n,5),1fr);gap:3px}
+  .stop{padding:3px;grid-template-columns:1fr;justify-items:center;border-radius:6px}.stop span{display:none}.stop b{width:16px;height:16px;font-size:10px}
+  .hint{font-size:11px;line-height:1.3;min-height:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .trend,.mini,.feed{display:none}
+  .cluster{bottom:max(8px,env(safe-area-inset-bottom,0px));padding:5px 10px;gap:9px;border-radius:12px}
+  .speed{min-width:52px}.speed b{font-size:24px}.speed small{font-size:8px;margin-top:2px}.tack{margin-top:4px;font-size:8.5px}.tack i{padding:3px 4px 2px}
+  .dial{width:64px;height:64px}
+  .reads{grid-template-columns:repeat(2,auto);gap:5px 12px}.reads .wide{display:none}.reads b{font-size:13px}.reads span{font-size:8px}.reads div{min-width:0;gap:3px}
+  .steer{left:max(8px,env(safe-area-inset-left,0px));bottom:max(8px,env(safe-area-inset-bottom,0px));gap:8px}.steer .pad{width:58px;height:58px;border-radius:16px}
+  .camctl{grid-template-columns:repeat(4,40px);gap:5px;right:max(8px,env(safe-area-inset-right,0px));bottom:max(8px,env(safe-area-inset-bottom,0px))}
+  .camctl .pad{width:40px;height:40px;border-radius:11px}.camctl .pad small{display:none}.camctl .pad svg{width:19px;height:19px}
+  .tackbtn{right:max(8px,env(safe-area-inset-right,0px));bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 48px)}.tackbtn .pad{width:92px;height:38px;font-size:11.5px}
+  .alert{bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 92px);font-size:10.5px;padding:6px 10px 5px}
+  .toast{top:max(8px,env(safe-area-inset-top,0px));left:calc(50% - 125px);font-size:12.5px;padding:7px 13px;max-width:calc(100% - 520px);white-space:nowrap}
+  .bigclock{top:max(8px,env(safe-area-inset-top,0px));left:calc(50% - 125px);padding:6px 16px 8px}.bigclock b{font-size:40px}
+  .count{left:calc(50% - 120px);font-size:clamp(120px,48vh,260px)}
+  .sheet{padding:16px}.sheet h2{font-size:32px}
+}
 @media (prefers-reduced-motion: reduce){ .toast.show{animation-duration:.01s;opacity:1} .alert.danger{animation:none} }
 </style>
 </head>
@@ -243,6 +274,7 @@ h1{font:italic 400 52px/.88 var(--font-display);margin:0;letter-spacing:-.015em}
   <div class="alert" id="alert" hidden></div>
   <div class="toast" id="toast"></div>
   <div class="count" id="count" hidden></div>
+  <div class="bigclock" id="bigclock" hidden><b id="bigclockT">0:30</b><small>to the gun</small></div>
 
   <div class="keys" id="keys" hidden>
     <kbd>←</kbd> <kbd>→</kbd> steer &nbsp; <kbd>Space</kbd> tack / gybe<br>
@@ -1026,7 +1058,10 @@ function hud(){
   else if(S.mode==='finished'){ck.textContent=fmt(S.final);ck.className='chip';}
   $('legN').textContent=S.mode==='prestart'?'Pre-start · 20 boats':S.mode==='finished'?`Finished ${ORD(S.place)} of 20`:`Leg ${Math.min(S.leg+1,S.legs.length)} of ${S.legs.length} · ${ORD(place())} of 20`;
   // countdown numbers
-  const cEl=$('count'),rem=S.gunAt-S.t;if(S.mode==='prestart'&&rem<=5.5){cEl.hidden=false;cEl.textContent=Math.max(1,Math.ceil(rem));}else cEl.hidden=true;
+  const cEl=$('count'),rem=S.gunAt-S.t,since=S.t-S.raceStart;let ct='';
+  if(S.mode==='prestart'&&rem<=10.5)ct=String(Math.max(1,Math.ceil(rem)));else if(S.mode==='racing'&&since<1.4)ct='Go!';
+  if(ct){if(cEl.textContent!==ct||cEl.hidden){cEl.textContent=ct;cEl.className='count'+(ct==='Go!'?' go':'');if(!reduce){void cEl.offsetWidth;cEl.classList.add('pop');}}cEl.hidden=false;}else cEl.hidden=true;
+  const bc=$('bigclock');bc.hidden=!(S.mode==='prestart'&&rem>10.5);if(!bc.hidden)$('bigclockT').textContent=fmtC(rem);
   // hint + alert
   let h='',bad=false,al='',ad=false;
   if(b.aground){h='Aground. Steer toward darker, deeper water to float off.';bad=true;al='Aground';ad=true;}
@@ -1125,7 +1160,7 @@ function lbHTML(rows,hl){if(!lbOn())return '<p class="note">The online leaderboa
   if(!rows.length)return '<p class="note">No times yet for this boat and wind. Be the first.</p>';
   return `<ol class="fleet lb">${rows.map((r,i)=>`<li class="${hl&&hl(r)?'me':''}"><b>${i+1}</b><i style="background:var(--sea)"></i><span>${esc(r.boat_name)} <small>${esc(r.skipper)}</small></span><em>${fmt(+r.time_s)}</em></li>`).join('')}</ol>`;}
 async function showBoard(elId,hl){const el=$(elId);if(!el)return;el.innerHTML=lbOn()?'<p class="note">Loading times…</p>':lbHTML();if(!lbOn())return;const rows=await lbFetch(S.boat,S.wind,FLEETS[S.fleet].key);if($(elId)===el)el.innerHTML=lbHTML(rows,hl);}
-function showMenu(){S.mode='menu';modal.hidden=false;['panel','cluster','camctl','steer','tackbtn','keys','alert'].forEach(id=>$(id).hidden=true);$('count').hidden=true;
+function showMenu(){S.mode='menu';modal.hidden=false;['panel','cluster','camctl','steer','tackbtn','keys','alert','bigclock'].forEach(id=>$(id).hidden=true);$('count').hidden=true;
   const best=lsGet('p2p-best')||{};
   sheet.innerHTML=`<p class="eyebrow">Southern Port Phillip · 2026</p><h2 id="sheetTitle">Capel Sound Invitational 2026</h2>
   <p>Twenty boats, mixed fleet: Sabres, Tornados and windsurfers. Faster classes sail extra laps so the fleet finishes together, and first boat home wins. Half the fleet starts off Rye, half off Rosebud, on the same gun. Each fleet sails through the shared gate, rounds the far mark keeping it on the left, then comes home through the gate to finish on its own line. The fleets meet head-on at the gate both ways, and the racing rules apply from the gun: port gives way to starboard, windward boat keeps clear, a boat clear astern keeps clear. A foul costs two turns, touching a mark costs one. The wind swings and builds or drops as the race goes on, and every change is called out.</p>
