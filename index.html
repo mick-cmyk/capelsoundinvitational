@@ -55,7 +55,7 @@ h1{font:italic 400 52px/.88 var(--font-display);margin:0;letter-spacing:-.015em}
 .jh-r{display:flex;gap:6px;align-items:center}
 .rst{font:700 11px/1 var(--font-ui);padding:5px 9px 4px;border-radius:999px;border:1px solid var(--line);background:var(--chip);color:var(--fg);cursor:pointer;white-space:nowrap}
 .rst.armed{background:var(--danger);color:#fff;border-color:transparent}
-.route{display:grid;gap:5px;list-style:none;margin:0;padding:0}
+.route{display:grid;gap:4px;list-style:none;margin:0;padding:0}
 .stop{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:center;padding:7px 10px;border-radius:9px;background:var(--chip);min-width:0}
 .stop b{font:700 11px/1 var(--font-mono);width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:var(--line);color:var(--fg)}
 .stop span{font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -159,10 +159,15 @@ h1{font:italic 400 52px/.88 var(--font-display);margin:0;letter-spacing:-.015em}
 .stats b{font:700 20px/1 var(--font-mono);font-variant-numeric:tabular-nums}
 .stats span{font:700 9.5px/1.2 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .note{font-size:12px;color:var(--muted);margin:12px 0 0}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.names label{display:grid;gap:5px;font:600 12px/1.2 var(--font-ui);color:var(--muted)}
+.names input{font:600 15px/1.2 var(--font-ui);padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--chip);color:var(--fg);min-width:0;-webkit-user-select:text;user-select:text}
+.names input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .fleet{list-style:none;margin:0 0 6px;padding:0;display:grid;gap:3px;max-height:240px;overflow:auto;font-size:13px}
 .fleet li{display:grid;grid-template-columns:26px 12px 1fr auto;gap:8px;align-items:center;padding:5px 8px;border-radius:7px;background:var(--chip)}
 .fleet li b{font:700 12px/1 var(--font-mono);color:var(--muted)}
 .fleet li i{width:12px;height:12px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.fleet li small{font-size:11.5px;color:var(--muted);margin-left:4px}.fleet li.me small{color:var(--bg);opacity:.75}
 .fleet li em{font:500 12px/1 var(--font-mono);font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums}
 .fleet li.me{background:var(--fg);color:var(--bg)}.fleet li.me b,.fleet li.me em{color:var(--bg)}
 .loading{font:italic 400 28px/1.2 var(--font-display);color:var(--fg);margin:0}
@@ -171,7 +176,7 @@ h1{font:italic 400 52px/.88 var(--font-display);margin:0;letter-spacing:-.015em}
   .masthead{display:none}
   .panel{left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));top:10px;width:auto;max-height:none;padding:10px 12px;gap:8px;border-radius:12px}
   .mini,.feed,.trend{display:none}
-  .route{grid-template-columns:repeat(5,1fr)}
+  .route{grid-template-columns:repeat(var(--n,5),1fr)}
   .stop{padding:6px;grid-template-columns:1fr;justify-items:center}.stop span{display:none}
   .hint{font-size:12px;min-height:0}
   .cluster{bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 106px);padding:8px 10px;gap:10px;max-width:calc(100% - 20px)}
@@ -656,12 +661,18 @@ const STR=[];for(let i=0;i<NSTR;i++)STR.push({x:0,z:0,age:9,life:1});
 const dmy=new THREE.Object3D();
 
 /* ---------- state ---------- */
-const LEGS=[{k:'start',t:'Start · cross the line'},{k:'gateE',t:'Gate · heading out'},{k:'rose',t:'Rosebud mark · to port'},{k:'gateW',t:'Gate · heading home'},{k:'finish',t:'Finish · Rye line'}];
+const LEGDEF={start:'Start · cross the line',gateE:'Gate · heading out',rose:'Rosebud mark · to port',gateW:'Gate · heading home',lapW:'Lap done · cross the line west',lapE:'Next lap · back across the line',finish:'Finish · Rye line'};
+function makeLegs(laps){const k=['start'];for(let i=0;i<laps;i++){k.push('gateE','rose','gateW');k.push(i<laps-1?'lapW':'finish');if(i<laps-1)k.push('lapE');}
+  let lap=1;return k.map(x=>{const o={k:x,t:LEGDEF[x],lap};if(x==='lapE')lap++;return o;});}
+const LEGS=makeLegs(1);
+function courseSpeed(B,tws){const va=vmgAngles(B,tws),up=polar(B,va.up,tws)*Math.cos(va.up*D2R),dn=-polar(B,va.down,tws)*Math.cos(va.down*D2R),rc=polar(B,90,tws);return 4/(1/up+1/dn+2/rc);}
+function lapsAt(tws){const ref=courseSpeed(BOATS.sabre,tws),o={};for(const id in BOATS)o[id]=clamp(Math.round(courseSpeed(BOATS[id],tws)/ref),1,2);return o;}
+function presetWind(key){const c=WPRESET[key],m=(c.spd[0]+c.spd[1])/2;return c.build?(m+c.build)/2:m;}
 const S={mode:'menu',t:0,boat:lsGet('p2p-boat')||'sabre',wind:lsGet('p2p-wind')||'moderate',leg:0,gunAt:0,raceStart:0,finishT:0,ocs:false,
   groundings:0,touches:0,pierHits:0,penalties:0,penServed:0,dist:0,roundAcc:0,lastBrg:null,lay:true,camMode:'chase',overview:false,paused:false};
 const b={x:-100,z:-1,h:0,v:0,tws:12,twd:240,twa:90,side:1,aground:false,depth:5,auto:null,pen:0,penTurn:0,heel:0,boom:30,flip:1};
 let boatObj=null;
-function setBoat(id){if(boatObj)scene.remove(boatObj.root);boatObj=buildBoat(id);S.boat=id;makeFleet();}
+function setBoat(id){if(boatObj)scene.remove(boatObj.root);boatObj=buildBoat(id);S.boat=id;if(!AIS.length)makeFleet();}
 // track
 const TRK_N=6000,trkPos=new Float32Array(TRK_N*3);let trkN=0,trkT=0;
 const trkGeo=new THREE.BufferGeometry();trkGeo.setAttribute('position',new THREE.BufferAttribute(trkPos,3));trkGeo.setDrawRange(0,0);
@@ -675,19 +686,19 @@ const feedEl=$('feed');
 function feed(t,kind='info'){const li=document.createElement('li');li.className=kind;li.innerHTML=`<span></span><em>${S.mode==='racing'?fmt(S.t-S.raceStart):''}</em>`;li.firstChild.textContent=t;feedEl.prepend(li);while(feedEl.children.length>5)feedEl.lastChild.remove();}
 const fmt=s=>{s=Math.max(0,s);const m=Math.floor(s/60),r=s-m*60;return m+':'+(r<10?'0':'')+r.toFixed(1);};
 const fmtC=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
-function renderLegs(){$('legs').innerHTML=LEGS.map((l,i)=>`<li class="stop ${S.mode==='finished'||i<S.leg?'done':(i===S.leg&&S.mode!=='menu'?'now':'')}"><b>${i+1}</b><span>${l.t}</span></li>`).join('');}
+function renderLegs(){const L=S.legs||LEGS,ml=L[L.length-1].lap>1;$('legs').style.setProperty('--n',L.length);$('legs').innerHTML=L.map((l,i)=>`<li class="stop ${S.mode==='finished'||i<S.leg?'done':(i===S.leg&&S.mode!=='menu'?'now':'')}"><b>${i+1}</b><span>${ml&&l.k!=='start'&&l.k!=='lapE'?'Lap '+l.lap+' · ':''}${l.t}</span></li>`).join('');}
 {const g=$('ticks');let h='';for(let a=0;a<360;a+=30){const r1=a%90?51:47;h+=`<line class="tick" x1="${Math.sin(a*D2R)*r1}" y1="${-Math.cos(a*D2R)*r1}" x2="${Math.sin(a*D2R)*55}" y2="${-Math.cos(a*D2R)*55}"/>`;}g.innerHTML=h;}
 function setNoGo(a){const r=56,x=Math.sin(a*D2R)*r,y=-Math.cos(a*D2R)*r;$('nogo').setAttribute('d',`M0,0 L${-x},${y} A${r} ${r} 0 0 1 ${x},${y}Z`);}
 
 /* ---------- race logic ---------- */
-function target(){const l=LEGS[S.leg]?.k;if(l==='rose')return MK.rose;if(l==='gateE'||l==='gateW')return MK.gc;return MK.sc;}
+function target(){const l=(S.legs||LEGS)[S.leg]?.k;if(l==='rose')return MK.rose;if(l==='gateE'||l==='gateW')return MK.gc;return MK.sc;}
 function crossed(p0x,p0z,p1x,p1z,a,c){const rx=p1x-p0x,rz=p1z-p0z,sx=c.x-a.x,sz=c.z-a.z,den=rx*sz-rz*sx;if(Math.abs(den)<1e-9)return 0;
   const qx=a.x-p0x,qz=a.z-p0z,t=(qx*sz-qz*sx)/den,u=(qx*rz-qz*rx)/den;if(t<0||t>1||u<0||u>1)return 0;return Math.sign(rx*CD.x+rz*CD.z);}
 const lineSide=(x,z)=>(x-MK.sc.x)*CD.x+(z-MK.sc.z)*CD.z;
 function segDist(px,pz,ax,az,bx,bz){const dx=bx-ax,dz=bz-az,t=clamp(((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz),0,1),qx=ax+dx*t-px,qz=az+dz*t-pz;return Math.hypot(qx,qz);}
 function placeAtStart(){b.x=-101;b.z=-1;const w=W.dir;const c1=wrap360(w+100),c2=wrap360(w-100);b.h=Math.abs(wrap180(c1-350))<Math.abs(wrap180(c2-350))?c1:c2;
   const wa=windAt(b.x,b.z);b.v=polar(BOATS[S.boat],100,wa.s)*.6;b.auto=null;b.aground=false;b.pen=0;b.penTurn=0;b.side=wrap180(w-b.h)>=0?1:-1;b.flip=b.side;}
-function startRace(){S.mode='prestart';S.leg=0;S.ocs=false;S.groundings=S.touches=S.pierHits=S.penalties=S.penServed=0;S.dist=0;S.roundAcc=0;S.lastBrg=null;S.finishT=0;S.wrongWarned=false;S.firstAt={};
+function startRace(){setMyTag();S.submitted=false;S.laps=lapsAt(presetWind(S.wind));S.legs=makeLegs(S.laps[S.boat]);S.mode='prestart';S.leg=0;S.ocs=false;S.groundings=S.touches=S.pierHits=S.penalties=S.penServed=0;S.dist=0;S.roundAcc=0;S.lastBrg=null;S.finishT=0;S.wrongWarned=false;S.firstAt={};
   resetWind(S.wind);placeAtStart();placeFleet();S.gunAt=S.t+30;trkN=0;trkGeo.setDrawRange(0,0);feedEl.innerHTML='';windHist.length=0;
   feed('30 seconds to the gun','info');renderLegs();S.overview=false;S.camMode=S.camMode||'chase';snapCam();
   ['panel','cluster','camctl','steer','tackbtn'].forEach(id=>$(id).hidden=false);$('keys').hidden=coarse;closeModal();}
@@ -696,7 +707,7 @@ function gun(){S.mode='racing';S.raceStart=S.t;const side=lineSide(b.x,b.z);let 
   if(side>0&&Math.abs((b.x-MK.sc.x)*PERP.x+(b.z-MK.sc.z)*PERP.z)<14){S.ocs=true;toast('Over early! Go back behind the line','bad',true);feed('Over the line at the gun','bad');}
   else{toast('Gun! Race on','good',true);feed('Gun','good');}}
 function legDone(msg){feed(msg,'good');S.leg++;renderLegs();
-  if(S.leg>=LEGS.length){finish();return;}
+  if(S.leg>=S.legs.length){finish();return;}
   toast(msg,'good');S.roundAcc=0;S.lastBrg=null;}
 function finish(){S.mode='finished';S.finishT=S.t-S.raceStart;const pen=b.pen*20;S.final=S.finishT+pen;S.place=1+AIS.filter(a=>a.finished&&a.finishT<S.final).length;
   toast('Finished · '+fmt(S.final),'good',true);setTimeout(showResults,1600);}
@@ -718,7 +729,7 @@ function step(dt){
     else if(m===MK.cb&&S.t-lastTouch>3){lastTouch=S.t;toast('Bumped the committee boat','bad');}}
   if(ev.ground){S.groundings++;toast('Aground! Steer for darker water','bad');feed('Ran aground'+bankName(b.x,b.z),'bad');}
   if(ev.moved){S.dist+=Math.hypot(b.x-ev.px,b.z-ev.pz);if(S.mode==='racing')checkCourse(ev.px,ev.pz,b.x,b.z);}
-  if(S.mode==='racing'||S.mode==='finished'||S.mode==='prestart'){for(let i=0;i<AIS.length;i++)aiStep(AIS[i],dt,B);bumps();}
+  if(S.mode==='racing'||S.mode==='finished'||S.mode==='prestart'){for(let i=0;i<AIS.length;i++)aiStep(AIS[i],dt,BOATS[AIS[i].cls]);bumps();}
   trkT+=dt;if(trkT>.3&&S.mode!=='menu'){trkT=0;trackPush();}
   if(edgeWarn>0)edgeWarn-=dt;
 }
@@ -748,13 +759,14 @@ function sail(r,B,st,dt,skill,tgtH){
 
 /* ---------- the fleet ---------- */
 const FLEET_NAMES=['Kingfish','Salt Shaker','Rip Tide','Gannet','Stingray','Blue Bottle','Snapper','Mutton Bird','Sea Dragon','Whiting','Pelican','Cuttlefish','Tea Tree','Southerly','Bay Runner','Hot Chips','Sandpiper','Moonah','Black Swan'];
+const CLASSES=['sabre','tornado','windsurfer'];
 const FLEET_DEF=FLEET_NAMES.map((name,i)=>{const hue=(i*137.5)%360,light=i%4===1?62:42;
   const hsl=(h,s,l)=>{s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return '#'+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');};
   const hull=i%3===2?'#f4f3ee':hsl(hue,62,light),acc=hsl((hue+40)%360,78,52);
-  return{name,hull,acc,mark:acc,num:'AUS '+(100+((i*373)%900)),jacket:hsl((hue+180)%360,70,50),jacket2:hsl((hue+90)%360,70,55),pal:i%5,tag:hsl(hue,55,30)};});
+  return{name,cls:CLASSES[i%3],hull,acc,mark:acc,num:'AUS '+(100+((i*373)%900)),jacket:hsl((hue+180)%360,70,50),jacket2:hsl((hue+90)%360,70,55),pal:i%5,tag:hsl(hue,55,30)};});
 const AIS=[];
 function makeFleet(){AIS.forEach(a=>{scene.remove(a.o.root);scene.remove(a.tag);});AIS.length=0;
-  FLEET_DEF.forEach((d,i)=>{const o=buildBoat(S.boat,d);const tag=sprite([{t:d.name,font:`800 30px ${UI_FONT}`,color:'#fff'}],.02,{bg:d.tag,pad:12,radius:10},true);scene.add(tag);
+  FLEET_DEF.forEach((d,i)=>{const o=buildBoat(d.cls,d);const tag=sprite([{t:d.name,font:`800 30px ${UI_FONT}`,color:'#fff'}],.02,{bg:d.tag,pad:12,radius:10},true);scene.add(tag);
     AIS.push(Object.assign({},d,{o,tag,x:-100,z:0,h:0,v:0,tws:10,twd:0,twa:90,side:1,flip:1,boom:30,heel:0,depth:5,aground:false}));});
   placeFleet();}
 const linePt=f=>({x:MK.rye.x+(MK.cb.x-MK.rye.x)*f,z:MK.rye.z+(MK.cb.z-MK.rye.z)*f});
@@ -763,14 +775,14 @@ function placeFleet(){const sk=FLEET_DEF.map((_,i)=>.9+.088*i/(FLEET_DEF.length-
     Object.assign(a,{x:lp.x-CD.x*back+(Math.random()-.5)*2,z:lp.z-CD.z*back+(Math.random()-.5)*2,lineF:f,skill:sk[i],late:-.4+Math.random()*4.4,hold:i%2,planT:Math.random()*.4,
       leg:0,roundAcc:0,lastBrg:null,ocs:false,wrongWarned:false,finished:false,finishT:0,sub:0,aground:false,depth:5});
     const w=W.dir,c1=wrap360(w+100),c2=wrap360(w-100);a.h=Math.abs(wrap180(c1-350))<Math.abs(wrap180(c2-350))?c1:c2;a.hd=a.h;a.side=wrap180(w-a.h)>=0?1:-1;a.flip=a.side;
-    const wa=windAt(a.x,a.z);a.tws=wa.s;a.twd=wa.d;a.v=polar(BOATS[S.boat],100,wa.s)*.5;a.depth=depthAt(a.x,a.z);});}
+    const wa=windAt(a.x,a.z);a.tws=wa.s;a.twd=wa.d;a.v=polar(BOATS[a.cls],100,wa.s)*.5;a.depth=depthAt(a.x,a.z);a.legs=makeLegs((S.laps||lapsAt(presetWind(S.wind)))[a.cls]);});}
 function crossGoal(a,cx,cz,dir,half,f){ // aim to cross a line (centre cx,cz; normal CD*dir) at fraction f of its half-width
   const side=((a.x-cx)*CD.x+(a.z-cz)*CD.z)*dir,lat=(a.x-cx)*PERP.x+(a.z-cz)*PERP.z,o=(f-.5)*2*half*.75,px=cx+PERP.x*o,pz=cz+PERP.z*o;
   if(side>1.2)return{x:px-CD.x*dir*7,z:pz-CD.z*dir*7};
   if(side>-3&&Math.abs(lat)<half-1)return{x:px+CD.x*dir*7,z:pz+CD.z*dir*7};
   if(side>=-3)return{x:px-CD.x*dir*7,z:pz-CD.z*dir*7};
   return{x:px,z:pz};}
-function aiGoal(a,B){const L=LEGS[a.leg]?.k;
+function aiGoal(a,B){const L=a.legs[a.leg]?.k;
   if(!L)return{x:-112,z:-22};
   if(L==='start'){const lp=linePt(a.lineF);
     if(S.mode==='prestart'){const tg=S.gunAt-S.t,d=Math.hypot(a.x-lp.x,a.z-lp.z),est=Math.max(2,polar(B,90,a.tws)*.7*a.skill),eta=d/(est*K);
@@ -779,6 +791,8 @@ function aiGoal(a,B){const L=LEGS[a.leg]?.k;
     if(S.t-S.raceStart<Math.max(0,a.late*.35)&&lineSide(a.x,a.z)<0)return{x:lp.x-CD.x*1.5,z:lp.z-CD.z*1.5,luff:true};
     if(lineSide(a.x,a.z)>.5)return{x:lp.x-CD.x*6,z:lp.z-CD.z*6};
     return crossGoal(a,MK.sc.x,MK.sc.z,1,12,a.lineF);}
+  if(L==='lapW')return crossGoal(a,MK.sc.x,MK.sc.z,-1,12,a.lineF);
+  if(L==='lapE')return crossGoal(a,MK.sc.x,MK.sc.z,1,12,a.lineF);
   if(L==='gateE'||L==='gateW')return crossGoal(a,MK.gc.x,MK.gc.z,L==='gateE'?1:-1,6,a.lineF);
   if(L==='rose'){const m=MK.rose,o=2.6+a.lineF*2,WP=[{x:m.x+PERP.x*o-CD.x*2,z:m.z+PERP.z*o-CD.z*2},{x:m.x+CD.x*o,z:m.z+CD.z*o},{x:m.x-PERP.x*o,z:m.z-PERP.z*o},{x:m.x-PERP.x*3-CD.x*9,z:m.z-PERP.z*3-CD.z*9}];
     const w=WP[Math.min(a.sub,3)];if(Math.hypot(a.x-w.x,a.z-w.z)<2.6)a.sub=(a.sub+1)%4;return WP[a.sub];}
@@ -803,8 +817,8 @@ function aiStep(a,dt,B){const w=windAt(a.x,a.z);a.tws=w.s;a.twd=w.d;
   const ev=sail(a,B,st,dt,a.skill,a.hd);
   if(ev.moved&&!a.finished&&(S.mode==='racing'||S.mode==='finished')){const r=advance(a,ev.px,ev.pz,a.x,a.z);
     if(r&&r!=='cleared'&&r!=='wrong'){a.leg++;a.roundAcc=0;a.lastBrg=null;a.sub=0;
-      if(!S.firstAt[r]){S.firstAt[r]=a.name;if(r!=='start')feed(`${a.name} leads ${r==='rose'?'round the Rosebud mark':r==='finish'?'over the finish line':'through the gate'}`,'info');}
-      if(a.leg>=LEGS.length){a.finished=true;a.finishT=S.t-S.raceStart;if(S.mode==='finished')renderFleet();}}}}
+      if(!S.firstAt[r]){S.firstAt[r]=a.name;if(r==='rose'||r==='finish'||r==='lapW')feed(`${a.name} leads ${r==='rose'?'round the Rosebud mark':r==='finish'?'over the finish line':'at the end of lap 1'}`,'info');}
+      if(a.leg>=a.legs.length){a.finished=true;a.finishT=S.t-S.raceStart;if(S.mode==='finished')renderFleet();}}}}
 const lastBump={};
 function bumps(){const all=[b,...AIS],n=all.length;
   for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const p=all[i],q=all[j],dx=q.x-p.x,dz=q.z-p.z;if(dx>1.6||dx<-1.6||dz>1.6||dz<-1.6)continue;const d=Math.hypot(dx,dz),R=1.6;
@@ -814,11 +828,11 @@ function bumps(){const all=[b,...AIS],n=all.length;
           else if(p.side>0&&q.side<0){toast(q.name+' fouled you on port','bad');feed(q.name+' fouled you on port','bad');}
           else{toast('Bumped '+q.name);}}}}}}
 const ORD=n=>n+(['th','st','nd','rd'][(n%100-20)%10]||['th','st','nd','rd'][n%100]||'th');
-function legTarget(l){const k=LEGS[l]?.k;if(k==='rose')return MK.rose;if(k==='gateE'||k==='gateW')return MK.gc;return MK.sc;}
-function prog(r,isMe){if(isMe?S.mode==='finished':r.finished)return 1e7-(isMe?S.finishT:r.finishT);const T=legTarget(r.leg),x=isMe?b.x:r.x,z=isMe?b.z:r.z;return r.leg*1000-Math.hypot(x-T.x,z-T.z);}
+function legTarget(r){const k=r.legs?.[r.leg]?.k;if(k==='rose')return MK.rose;if(k==='gateE'||k==='gateW')return MK.gc;return MK.sc;}
+function prog(r,isMe){if(isMe?S.mode==='finished':r.finished)return 1e7-(isMe?S.finishT:r.finishT);const T=legTarget(r),x=isMe?b.x:r.x,z=isMe?b.z:r.z;return(r.leg*90+Math.max(0,90-Math.hypot(x-T.x,z-T.z)))/((r.legs?.length||5)*90);}
 function place(){const me=prog(S,true);return 1+AIS.filter(a=>prog(a,false)>me).length;}
 function bankName(x,z){let best='',bd=1e9;for(const k of BANKS){const d=Math.hypot(x-k.x,z-k.z)/Math.max(k.rx,k.rz);if(d<bd){bd=d;best=k.name;}}return bd<1.6?' on '+best:' in the shallows';}
-function advance(r,px,pz,nx,nz){const L=LEGS[r.leg]?.k;
+function advance(r,px,pz,nx,nz){const L=r.legs?.[r.leg]?.k;
   if(L==='start'){const c=crossed(px,pz,nx,nz,MK.rye,MK.cb);if(c>0){r.ocs=false;return'start';}if(c<0&&r.ocs){r.ocs=false;return'cleared';}}
   else if(L==='gateE'){if(crossed(px,pz,nx,nz,MK.gA,MK.gB)>0)return'gateE';}
   else if(L==='rose'){const d=Math.hypot(nx-MK.rose.x,nz-MK.rose.z),brg=Math.atan2(nx-MK.rose.x,-(nz-MK.rose.z))*R2D;
@@ -827,12 +841,14 @@ function advance(r,px,pz,nx,nz){const L=LEGS[r.leg]?.k;
     else r.lastBrg=null;}
   else if(L==='gateW'){if(crossed(px,pz,nx,nz,MK.gA,MK.gB)<0)return'gateW';}
   else if(L==='finish'){if(crossed(px,pz,nx,nz,MK.rye,MK.cb)<0)return'finish';}
+  else if(L==='lapW'){if(crossed(px,pz,nx,nz,MK.rye,MK.cb)<0)return'lapW';}
+  else if(L==='lapE'){if(crossed(px,pz,nx,nz,MK.rye,MK.cb)>0)return'lapE';}
   return null;}
 function checkCourse(px,pz,nx,nz){const ev=advance(S,px,pz,nx,nz);if(!ev)return;
   if(ev==='cleared'){toast('Cleared. Now start properly','good');feed('Returned behind the line','good');return;}
   if(ev==='wrong'){toast('Wrong way round! Keep the mark on your left','bad');return;}
   if(!S.firstAt[ev])S.firstAt[ev]='You';
-  legDone({start:'Started · '+fmt(S.t-S.raceStart)+' after the gun',gateE:'Through the gate',rose:'Rounded the Rosebud mark',gateW:'Through the gate',finish:'Finished'}[ev]);}
+  legDone({start:'Started · '+fmt(S.t-S.raceStart)+' after the gun',gateE:'Through the gate',rose:'Rounded the Rosebud mark',gateW:'Through the gate',lapW:'Lap done · turn back across the line',lapE:'Next lap under way',finish:'Finished'}[ev]);}
 function tackNow(){if(S.mode==='menu')return;const nh=wrap360(2*b.twd-b.h);b.auto=nh;}
 
 /* ---------- camera ---------- */
@@ -889,8 +905,8 @@ function updateVisuals(dt,time){
     dmy.position.set(p.x,.04,p.z);dmy.rotation.set(0,ang,0);dmy.scale.set(vis?(.35+W.spd*.035)*zs*f:0,1,vis?.035*zs*f:0);dmy.updateMatrix();strMesh.setMatrixAt(i,dmy.matrix);}
   strMesh.instanceMatrix.needsUpdate=true;strMesh.material.opacity=clamp(.12+W.spd*.012,.15,.38);
   if(o)poseBoat(o,b,B,dt,time,cd,true);
-  const tagOn=S.mode!=='menu'&&cd<95;
-  for(let i=0;i<AIS.length;i++){const a=AIS[i];poseBoat(a.o,a,B,dt,time+i*1.7,cd,false);a.tag.visible=tagOn;if(tagOn)a.tag.position.set(a.x,3.7,a.z);}
+  const tagOn=S.mode!=='menu'&&cd<95;if(myTag){myTag.visible=tagOn;myTag.position.set(b.x,3.9,b.z);}
+  for(let i=0;i<AIS.length;i++){const a=AIS[i];poseBoat(a.o,a,BOATS[a.cls],dt,time+i*1.7,cd,false);a.tag.visible=tagOn;if(tagOn)a.tag.position.set(a.x,3.7,a.z);}
   // marks bob, next ring
   const tb=Math.sin(time*1.8)*.04;[MK.rye,MK.rose,MK.gA,MK.gB].forEach((m,i)=>{m.obj.position.y=tb*(i%2?1:-1);m.obj.rotation.z=Math.sin(time*1.3+i)*.05;});
   const racing=S.mode==='prestart'||S.mode==='racing';
@@ -904,7 +920,7 @@ function updateVisuals(dt,time){
     let a=null;if(off<va.up+8)a=va.up;else if(off>va.down-8)a=va.down;
     if(a!==null){const L=70;for(const[ln,sg]of[[lay1,1],[lay2,-1]]){const hd=(b.twd+sg*a+180)*D2R;setLine(ln,T,{x:T.x+Math.sin(hd)*L,z:T.z-Math.cos(hd)*L});ln.visible=true;}}
     if(cd<60){setLine(toTgt,b,T);toTgt.visible=true;}}
-  startLine.material.opacity=S.leg===0||S.leg===4||S.mode==='menu'?.95:.35;
+  startLine.material.opacity=S.mode==='menu'||/start|finish|lap/.test((S.legs||LEGS)[S.leg]?.k||'')?.95:.35;
   // sun & shadows follow the view
   const ss=clamp(cd*.55,14,80);sun.position.copy(controls.target).addScaledVector(SUN_OFF,160);sun.target.position.copy(controls.target);
   Object.assign(sun.shadow.camera,{left:-ss,right:ss,top:ss,bottom:-ss,near:20,far:340});sun.shadow.camera.updateProjectionMatrix();
@@ -925,7 +941,7 @@ const hx=Math.sin(bb.h*D2R),hz=-Math.cos(bb.h*D2R);
     o.boom.rotation.y=-bb.flip*bb.boom*D2R;o.sails.forEach(s=>s.scale.x=Math.abs(bb.flip)<.15?.15*Math.sign(bb.flip||1):bb.flip);
     if(o.jib){o.jib.rotation.y=-bb.flip*bb.boom*.75*D2R;}
     const pow=luff?0:clamp(aws/18,0,1.2)*Math.sin(clamp(awa,20,90)*D2R)*(1-clamp((awa-100)/80,0,1)*.7);
-    const heelT=clamp(pow*o.maxHeel*(S.boat==='tornado'?(bb.tws>12?1.3:.4):1),0,o.maxHeel);bb.heel=lerp(bb.heel,heelT*bb.side,Math.min(1,dt*2));
+    const heelT=clamp(pow*o.maxHeel*(B.id==='tornado'?(bb.tws>12?1.3:.4):1),0,o.maxHeel);bb.heel=lerp(bb.heel,heelT*bb.side,Math.min(1,dt*2));
     o.roll.rotation.z=bb.heel*D2R;o.roll.rotation.x=-clamp(bb.v*.004,0,.04);
     o.crew.forEach(c=>{const s=Math.sign(bb.flip)||1,hk=clamp(bb.tws/18,0,1);
       if(c.kind==='hike'){c.g.position.x=lerp(c.g.position.x,s*c.beam,dt*3);c.g.rotation.z=-s*hk*.9;}
@@ -957,7 +973,7 @@ function hud(){
   const ck=$('clock');if(S.mode==='prestart'){ck.textContent='Gun '+fmtC(S.gunAt-S.t);ck.className='chip';}
   else if(S.mode==='racing'){ck.textContent=fmt(S.t-S.raceStart);ck.className=S.ocs?'chip bad':'chip';}
   else if(S.mode==='finished'){ck.textContent=fmt(S.final);ck.className='chip';}
-  $('legN').textContent=S.mode==='prestart'?'Pre-start · 20 boats':S.mode==='finished'?`Finished ${ORD(S.place)} of 20`:`Leg ${Math.min(S.leg+1,5)} of 5 · ${ORD(place())} of 20`;
+  $('legN').textContent=S.mode==='prestart'?'Pre-start · 20 boats':S.mode==='finished'?`Finished ${ORD(S.place)} of 20`:`Leg ${Math.min(S.leg+1,S.legs.length)} of ${S.legs.length} · ${ORD(place())} of 20`;
   // countdown numbers
   const cEl=$('count'),rem=S.gunAt-S.t;if(S.mode==='prestart'&&rem<=5.5){cEl.hidden=false;cEl.textContent=Math.max(1,Math.ceil(rem));}else cEl.hidden=true;
   // hint + alert
@@ -969,11 +985,11 @@ function hud(){
   else if(S.ocs){h='Over early. Sail back across to the pre-start side, then start again.';bad=true;}
   else if(edgeWarn>0){h='That is the edge of the race area. Turn back.';}
   else if(S.mode==='prestart'){h=lineSide(b.x,b.z)>0?'You are on the course side. Get back behind the line before the gun.':'Hold behind the line between the orange mark and the committee boat. Cross it heading east after the gun.';}
-  else if(S.mode==='racing'){const L=LEGS[S.leg].k,va=vmgAngles(B,b.tws),brg=Math.atan2(dx,-dz)*R2D,off=Math.abs(wrap180(brg-b.twd));
+  else if(S.mode==='racing'){const L=S.legs[S.leg].k,va=vmgAngles(B,b.tws),brg=Math.atan2(dx,-dz)*R2D,off=Math.abs(wrap180(brg-b.twd));
     if(off<va.up+6){const laid=b.side>0?wrap180(brg-(b.twd-va.up))<=0:wrap180(brg-(b.twd+va.up))>=0;
       h=laid?'You are laying the mark on this tack. Hold your course.':(shc==='warn'?'Headed: a tack now gains on the new wind.':'Upwind. Sail close-hauled and tack when the mark reaches the dashed layline.');}
     else if(off>va.down-6)h=S.boat==='tornado'?'Downwind. A cat is slow running square, so gybe between the laylines.':'Downwind. Sail a little off dead run and use the dark gust patches.';
-    else h=L==='rose'?'Leave the yellow Rosebud mark on your left, then head home.':L.startsWith('gate')?'Pass between the two red gate buoys.':L==='finish'?'Cross the line between the orange mark and the committee boat.':'Reaching: the fastest point of sail.';}
+    else h=L==='rose'?'Leave the yellow Rosebud mark on your left, then head home.':L.startsWith('gate')?'Pass between the two red gate buoys.':L==='finish'?'Cross the line between the orange mark and the committee boat.':L==='lapW'?'End of the lap: cross the line heading west, then turn back for the next lap.':L==='lapE'?'Turn round and cross the line heading east to start your next lap.':'Reaching: the fastest point of sail.';}
   const hE=$('hint');hE.textContent=h;hE.classList.toggle('bad',bad);
   const aE=$('alert');aE.hidden=!al;aE.textContent=al;aE.classList.toggle('danger',ad);
   drawMini();drawTrend();
@@ -1040,38 +1056,62 @@ function boatThumb(id){const c=document.createElement('canvas');c.width=240;c.he
   else{g.fillStyle='#f4f3ee';g.beginPath();g.moveTo(-70,-14);g.quadraticCurveTo(-20,6,62,-4);g.lineTo(64,-16);g.closePath();g.fill();g.fillStyle='#f7f6f1';g.strokeStyle='#bbb';g.lineWidth=1.5;
     g.beginPath();g.moveTo(-14,-20);g.lineTo(-14,-124);g.quadraticCurveTo(26,-70,44,-22);g.closePath();g.fill();g.stroke();g.fillStyle='#d23a26';g.beginPath();g.arc(30,-28,7,0,TAU);g.fill();}
   return c;}
+const ME={skipper:lsGet('p2p-skipper')||'',boat:lsGet('p2p-boatname')||''};
+const clean=(v,n)=>String(v||'').replace(/[<>]/g,'').replace(/\s+/g,' ').trim().slice(0,n);
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let myTag=null;
+function setMyTag(){if(myTag)scene.remove(myTag);myTag=sprite([{t:ME.boat||'You',font:`800 30px ${UI_FONT}`,color:'#16202a'}],.022,{bg:'#f5c518',pad:12,radius:10},true);scene.add(myTag);}
+/* ---------- leaderboard (Supabase; switched off until LB.url and LB.key are set) ---------- */
+const LB={url:'',key:''};
+const lbOn=()=>!!(LB.url&&LB.key);
+async function lbFetch(cls,wind){if(!lbOn())return null;
+  try{const r=await fetch(`${LB.url}/rest/v1/csi_scores?select=skipper,boat_name,time_s,place,created_at&class=eq.${cls}&wind=eq.${wind}&order=time_s.asc&limit=10`,{headers:{apikey:LB.key,Authorization:'Bearer '+LB.key}});
+    if(!r.ok)return null;return await r.json();}catch(e){return null;}}
+async function lbSubmit(row){if(!lbOn())return false;
+  try{const r=await fetch(`${LB.url}/rest/v1/csi_scores`,{method:'POST',headers:{apikey:LB.key,Authorization:'Bearer '+LB.key,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(row)});return r.ok;}catch(e){return false;}}
+function lbHTML(rows,hl){if(!lbOn())return '<p class="note">The online leaderboard is not switched on yet. Your personal best is kept on this device.</p>';
+  if(rows===null)return '<p class="note">Could not reach the leaderboard. Check your connection.</p>';
+  if(!rows.length)return '<p class="note">No times yet for this boat and wind. Be the first.</p>';
+  return `<ol class="fleet lb">${rows.map((r,i)=>`<li class="${hl&&hl(r)?'me':''}"><b>${i+1}</b><i style="background:var(--sea)"></i><span>${esc(r.boat_name)} <small>${esc(r.skipper)}</small></span><em>${fmt(+r.time_s)}</em></li>`).join('')}</ol>`;}
+async function showBoard(elId,hl){const el=$(elId);if(!el)return;el.innerHTML=lbOn()?'<p class="note">Loading times…</p>':lbHTML();if(!lbOn())return;const rows=await lbFetch(S.boat,S.wind);if($(elId)===el)el.innerHTML=lbHTML(rows,hl);}
 function showMenu(){S.mode='menu';modal.hidden=false;['panel','cluster','camctl','steer','tackbtn','keys','alert'].forEach(id=>$(id).hidden=true);$('count').hidden=true;
   const best=lsGet('p2p-best')||{};
   sheet.innerHTML=`<p class="eyebrow">Southern Port Phillip · 2026</p><h2 id="sheetTitle">Capel Sound Invitational 2026</h2>
-  <p>Twenty boats, one class. Start off Rye Pier, sail out through the gate, round the Rosebud mark keeping it on your left, come back through the gate and finish where you started. The wind swings and builds or drops as the race goes on, and every change is called out.</p>
+  <p>Twenty boats, mixed fleet: Sabres, Tornados and windsurfers. Faster classes sail extra laps so the fleet finishes together, and first boat home wins. Start off Rye Pier, sail out through the gate, round the Rosebud mark keeping it on your left, come back through the gate and finish where you started. The wind swings and builds or drops as the race goes on, and every change is called out.</p>
   <div class="legend"><span><i style="background:#132a5e"></i>Deep</span><span><i style="background:#3a9fc0"></i>Mid</span><span><i style="background:#b8eae1"></i>Shallow, crystal clear</span><span><i style="background:#ecdfc0"></i>Sandbank</span><span><i style="background:#0a1a45;opacity:.5"></i>Gust</span></div>
+  <h3>Skipper</h3><div class="names"><label>Your name<input id="pname" maxlength="24" autocomplete="nickname" placeholder="e.g. Mick R" value="${esc(ME.skipper)}"></label><label>Boat name<input id="bname" maxlength="20" placeholder="e.g. Wet Dream" value="${esc(ME.boat)}"></label></div>
   <h3>Boat</h3><div class="opts" role="radiogroup" aria-label="Boat">${Object.values(BOATS).map(B=>`<button class="opt" role="radio" aria-checked="${S.boat===B.id}" data-boat="${B.id}"><span class="th" data-th="${B.id}"></span><b>${B.name}</b><span>${B.kind}. ${B.traits.join('. ')}.</span></button>`).join('')}</div>
   <h3>Wind</h3><div class="chips" role="radiogroup" aria-label="Wind">${Object.entries(WPRESET).map(([k,w])=>`<button class="wchip" role="radio" aria-checked="${S.wind===k}" data-wind="${k}">${w.name}<small>${w.sub}</small></button>`).join('')}</div>
   <h3>Controls</h3><div class="ctrls">${coarse?`<kbd>◀ ▶</kbd><span>Hold to steer</span><kbd>Tack / gybe</kbd><span>Turn through the wind onto the other side</span><kbd>Pinch</kbd><span>Zoom in and out; drag to look around</span><kbd>Restart</kbd><span>Top of the race card, tap twice</span>`:
    `<kbd>← →</kbd><span>Steer (or A / D)</span><kbd>R</kbd><span>Restart the race (press twice)</span><kbd>Space</kbd><span>Tack or gybe onto the other side</span><kbd>Scroll · + −</kbd><span>Zoom in and out; drag to look around</span><kbd>V · C</kbd><span>Whole course view · camera mode</span>`}</div>
-  <p class="note" id="bestNote"></p>
+  <p class="note" id="lapNote"></p><p class="note" id="bestNote"></p><h3 id="lbHead">Leaderboard</h3><div id="lbMenu"></div>
   <button class="cta" id="go">Go to the start line</button>
   <p class="note">Coastline traced from the satellite view. The sandbanks and depths are made up for the game, not taken from a chart. Time runs about 17 times faster than real life.</p>`;
   sheet.querySelectorAll('[data-th]').forEach(s=>s.replaceWith(boatThumb(s.dataset.th)));
-  const upd=()=>{const k=S.boat+'-'+S.wind;$('bestNote').textContent=best[k]?`Your best in a ${BOATS[S.boat].name}, ${WPRESET[S.wind].name.toLowerCase()} wind: ${fmt(best[k])}`:'';};upd();
+  const upd=()=>{const k=S.boat+'-'+S.wind,L=lapsAt(presetWind(S.wind));$('lbHead').textContent=`Leaderboard · ${BOATS[S.boat].name}, ${WPRESET[S.wind].name.toLowerCase()} wind`;showBoard('lbMenu');$('lapNote').textContent='Laps in '+WPRESET[S.wind].name.toLowerCase()+' wind: '+Object.values(BOATS).map(B=>B.name+' '+L[B.id]).join(' · ');$('bestNote').textContent=best[k]?`Your best in a ${BOATS[S.boat].name}, ${WPRESET[S.wind].name.toLowerCase()} wind: ${fmt(best[k])}`:'';};upd();
   sheet.querySelectorAll('[data-boat]').forEach(el=>el.onclick=()=>{S.boat=el.dataset.boat;lsSet('p2p-boat',S.boat);sheet.querySelectorAll('[data-boat]').forEach(x=>x.setAttribute('aria-checked',x===el));setBoat(S.boat);placeAtStart();upd();});
   sheet.querySelectorAll('[data-wind]').forEach(el=>el.onclick=()=>{S.wind=el.dataset.wind;lsSet('p2p-wind',S.wind);sheet.querySelectorAll('[data-wind]').forEach(x=>x.setAttribute('aria-checked',x===el));upd();});
-  $('go').onclick=()=>{startRace();};
+  const saveNames=()=>{ME.skipper=clean($('pname').value,24);ME.boat=clean($('bname').value,20);lsSet('p2p-skipper',ME.skipper);lsSet('p2p-boatname',ME.boat);};
+  $('pname').oninput=$('bname').oninput=saveNames;
+  $('go').onclick=()=>{saveNames();startRace();};
   controls.target.set(-8,0,-12);camera.position.set(-30,150,140);}
 function showResults(){modal.hidden=false;const best=lsGet('p2p-best')||{},k=S.boat+'-'+S.wind,pb=!best[k]||S.final<best[k];if(pb){best[k]=S.final;lsSet('p2p-best',best);}
-  sheet.innerHTML=`<p class="eyebrow">${BOATS[S.boat].name} · ${WPRESET[S.wind].name} wind</p><h2 id="sheetTitle">${S.place===1?'Line honours.':pb?'New best.':'Finished '+ORD(S.place)+'.'}</h2>
+  sheet.innerHTML=`<p class="eyebrow">${BOATS[S.boat].name} · ${WPRESET[S.wind].name} wind</p><h2 id="sheetTitle">${S.place===1?'First home.':pb?'New best.':'Finished '+ORD(S.place)+'.'}</h2>
   <p>${b.pen?`${b.pen} unserved penalty turn${b.pen>1?'s':''} added ${b.pen*20} s. `:''}${S.groundings?`You ran aground ${S.groundings} time${S.groundings>1?'s':''}. The pale water is the clue.`:'Clean sailing: no groundings.'}</p>
   <div class="stats"><div><b>${ORD(S.place)}</b><span>Of 20</span></div><div><b>${fmt(S.final)}</b><span>Time</span></div><div><b>${(S.dist*UNIT_NM).toFixed(2)}</b><span>Sailed nm</span></div><div><b>${S.groundings}</b><span>Groundings</span></div><div><b>${S.penalties}</b><span>Penalties</span></div></div>
   <h3>Results</h3><ol class="fleet" id="fleetRes"></ol>
-  ${pb?'':`<p class="note">Best: ${fmt(best[k])}</p>`}
+  ${pb?'':`<p class="note">Your best on this device: ${fmt(best[k])}</p>`}
+  <h3>Leaderboard · ${BOATS[S.boat].name}, ${WPRESET[S.wind].name.toLowerCase()} wind</h3><div id="lbRes"></div>
   <button class="cta" id="again">Sail again</button><button class="cta dark" id="change">Change boat or wind</button>`;
   renderFleet();
+  const mine=r=>r.boat_name===(ME.boat||'Unnamed')&&r.skipper===(ME.skipper||'Anonymous')&&Math.abs(+r.time_s-S.final)<.06;
+  if(!S.submitted&&lbOn()){S.submitted=true;lbSubmit({skipper:ME.skipper||'Anonymous',boat_name:ME.boat||'Unnamed',class:S.boat,wind:S.wind,laps:S.laps[S.boat],time_s:+S.final.toFixed(1),place:S.place}).then(()=>showBoard('lbRes',mine));}else showBoard('lbRes',mine);
   $('again').onclick=()=>startRace();$('change').onclick=()=>{showMenu();placeAtStart();};}
 
 function renderFleet(){const el=$('fleetRes');if(!el||modal.hidden)return;
-  const rows=[{name:'You',me:1,t:S.final,fin:1},...AIS.map(a=>({name:a.name,col:a.acc,num:a.num,t:a.finished?a.finishT:null,fin:a.finished,leg:a.leg,p:prog(a,false)}))];
+  const lp=n=>n+(n>1?' laps':' lap'),rows=[{name:(ME.boat||'You')+(ME.boat?' (you)':''),me:1,cls:BOATS[S.boat].name,laps:lp(S.laps[S.boat]),t:S.final,fin:1},...AIS.map(a=>({name:a.name,cls:BOATS[a.cls].name,laps:lp(S.laps[a.cls]),col:a.acc,t:a.finished?a.finishT:null,fin:a.finished,leg:a.leg,n:a.legs.length,p:prog(a,false)}))];
   rows.sort((x,y)=>x.fin&&y.fin?x.t-y.t:x.fin?-1:y.fin?1:y.p-x.p);
-  el.innerHTML=rows.map((r,i)=>`<li class="${r.me?'me':''}"><b>${i+1}</b><i style="background:${r.me?'var(--accent)':r.col}"></i><span>${r.name}</span><em>${r.fin?fmt(r.t):'Leg '+Math.min(5,r.leg+1)+' of 5'}</em></li>`).join('');}
+  el.innerHTML=rows.map((r,i)=>`<li class="${r.me?'me':''}"><b>${i+1}</b><i style="background:${r.me?'var(--accent)':r.col}"></i><span>${r.name} <small>${r.cls} · ${r.laps}</small></span><em>${r.fin?fmt(r.t):'Leg '+Math.min(r.n,r.leg+1)+' of '+r.n}</em></li>`).join('');}
 setInterval(()=>{if(S.mode==='finished')renderFleet();},1000);
 /* ---------- loop ---------- */
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
@@ -1082,7 +1122,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;
   if(S.mode==='menu'){updateWind(dt);updateGusts(dt);b.tws=windAt(b.x,b.z).s;b.twd=windAt(b.x,b.z).d;}else if(!S.paused)step(dt);
   updateCamera(dt);updateVisuals(dt,clock);renderer.render(scene,camera);requestAnimationFrame(frame);}
 showMenu();requestAnimationFrame(frame);
-window.__pp={cc:checkCourse,setBoat,AIS,place,S,b,W,MK,BOATS,depthAt,windAt,polar,vmgAngles,keys,startRace,tackNow,setOverview,zoom,LEGS,
+window.__pp={lapsAt,presetWind,makeLegs,cc:checkCourse,setBoat,AIS,place,S,b,W,MK,BOATS,depthAt,windAt,polar,vmgAngles,keys,startRace,tackNow,setOverview,zoom,LEGS,
   run:t=>{for(let e=0;e<t;e+=1/60){step(1/60);updateVisuals(1/60,clock+=1/60);}},render:()=>{updateCamera(1/60);renderer.render(scene,camera);},snapCam,camera,controls};
 })();
 </script>
