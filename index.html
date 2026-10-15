@@ -631,8 +631,8 @@ function buildBoat(id,opt={}){
     const boom=new THREE.Group();boom.position.y=.25;mast.add(boom);o.boom=boom;
     const bm=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,1.25,6).rotateX(Math.PI/2),M('#c8ccd0',{metalness:.5}));bm.position.z=.62;boom.add(bm);
     const sl=new THREE.Mesh(sailGeo(2.85,t=>1.25*(1-t*.88)+.12*Math.sin(Math.PI*t),.02),sailM);sl.castShadow=true;boom.add(sl);o.sails.push(sl);
-    const jib=new THREE.Group();jib.position.set(0,.3,-1.08);roll.add(jib);o.jib=jib;
-    const jg=sailGeo(1.9,t=>.7*(1-t),0,.13);jg.rotateX(-.33);const js=new THREE.Mesh(jg,new THREE.MeshStandardMaterial({color:C('#f7f6f1'),side:THREE.DoubleSide,roughness:.8}));js.castShadow=true;jib.add(js);o.sails.push(js);
+    const stay=new THREE.Group();stay.position.set(0,.3,-1.08);stay.rotation.x=Math.atan2(.72,2.52);roll.add(stay);const jib=new THREE.Group();stay.add(jib);o.jib=jib; // sheets around the forestay, head stays on the mast
+    const jg=sailGeo(2.6,t=>.78*(1-t),0,.13);const js=new THREE.Mesh(jg,new THREE.MeshStandardMaterial({color:C('#f7f6f1'),side:THREE.DoubleSide,roughness:.8}));js.castShadow=true;jib.add(js);o.sails.push(js);
     const c1=sailor(opt.jacket||'#1d5fd6'),c2=sailor(opt.jacket2||'#f5c518');c1.position.set(.55,.22,.62);c2.position.set(.55,.22,.1);roll.add(c1,c2);
     o.crew.push({g:c1,kind:'helm',beam:.6},{g:c2,kind:'trap',beam:.6});
     o.flagY=3.22;o.beam=1.5;o.maxHeel=9;
