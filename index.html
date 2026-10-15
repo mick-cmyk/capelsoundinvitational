@@ -746,10 +746,10 @@ const STR=[];for(let i=0;i<NSTR;i++)STR.push({x:0,z:0,age:9,life:1});
 const dmy=new THREE.Object3D();
 
 /* ---------- state ---------- */
-const LEGDEF={'1':{start:'Start · Rye line, heading east',gateOut:'Gate · heading east',far:'Rosebud mark · to port',gateIn:'Gate · heading home',lapIn:'Lap done · back over the Rye line',lapOut:'Next lap · out over the Rye line',finish:'Finish · Rye line'},
-  '-1':{start:'Start · Rosebud line, heading west',gateOut:'Gate · heading west',far:'Rye mark · to port',gateIn:'Gate · heading home',lapIn:'Lap done · back over the Rosebud line',lapOut:'Next lap · out over the Rosebud line',finish:'Finish · Rosebud line'}};
-function makeLegs(laps,d=1){const k=['start'];for(let i=0;i<laps;i++){k.push('gateOut','far','gateIn');if(i<laps-1)k.push('lapIn','lapOut');else k.push('finish');}
-  let lap=1;return k.map(x=>{const o={k:x,t:LEGDEF[d][x],lap};if(x==='lapOut')lap++;return o;});}
+const LEGDEF={'1':{start:'Start · Rye line, heading east',gateOut:'Gate · heading east',far:'Rosebud mark · to port',gateIn:'Gate · heading home',home:'Rye mark · round to port, lap 2',finish:'Finish · Rye line'},
+  '-1':{start:'Start · Rosebud line, heading west',gateOut:'Gate · heading west',far:'Rye mark · to port',gateIn:'Gate · heading home',home:'Rosebud mark · round to port, lap 2',finish:'Finish · Rosebud line'}};
+function makeLegs(laps,d=1){const k=['start'];for(let i=0;i<laps;i++){k.push('gateOut','far','gateIn');if(i<laps-1)k.push('home');else k.push('finish');}
+  let lap=1;return k.map(x=>{const o={k:x,t:LEGDEF[d][x],lap};if(x==='home')lap++;return o;});}
 const LEGS=makeLegs(1,1);
 function courseSpeed(B,tws){const va=vmgAngles(B,tws),up=polar(B,va.up,tws)*Math.cos(va.up*D2R),dn=-polar(B,va.down,tws)*Math.cos(va.down*D2R),rc=polar(B,90,tws);return 4/(1/up+1/dn+2/rc);}
 function lapsAt(tws){const ref=courseSpeed(BOATS.sabre,tws),o={};for(const id in BOATS)o[id]=clamp(Math.round(courseSpeed(BOATS[id],tws)/ref),1,2);return o;}
@@ -772,7 +772,7 @@ const feedEl=$('feed');
 function feed(t,kind='info'){const li=document.createElement('li');li.className=kind;li.innerHTML=`<span></span><em>${S.mode==='racing'?fmt(S.t-S.raceStart):''}</em>`;li.firstChild.textContent=t;feedEl.prepend(li);while(feedEl.children.length>5)feedEl.lastChild.remove();}
 const fmt=s=>{s=Math.max(0,s);const m=Math.floor(s/60),r=s-m*60;return m+':'+(r<10?'0':'')+r.toFixed(1);};
 const fmtC=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
-function renderLegs(){const L=S.legs||LEGS,ml=L[L.length-1].lap>1;$('legs').style.setProperty('--n',L.length);$('legs').innerHTML=L.map((l,i)=>`<li class="stop ${S.mode==='finished'||i<S.leg?'done':(i===S.leg&&S.mode!=='menu'?'now':'')}"><b>${i+1}</b><span>${ml&&l.k!=='start'&&l.k!=='lapOut'?'Lap '+l.lap+' · ':''}${l.t}</span></li>`).join('');}
+function renderLegs(){const L=S.legs||LEGS,ml=L[L.length-1].lap>1;$('legs').style.setProperty('--n',L.length);$('legs').innerHTML=L.map((l,i)=>`<li class="stop ${S.mode==='finished'||i<S.leg?'done':(i===S.leg&&S.mode!=='menu'?'now':'')}"><b>${i+1}</b><span>${ml&&l.k!=='start'?'Lap '+l.lap+' · ':''}${l.t}</span></li>`).join('');}
 {const g=$('ticks');let h='';for(let a=0;a<360;a+=30){const r1=a%90?51:47;h+=`<line class="tick" x1="${Math.sin(a*D2R)*r1}" y1="${-Math.cos(a*D2R)*r1}" x2="${Math.sin(a*D2R)*55}" y2="${-Math.cos(a*D2R)*55}"/>`;}g.innerHTML=h;}
 function setNoGo(a){const r=56,x=Math.sin(a*D2R)*r,y=-Math.cos(a*D2R)*r;$('nogo').setAttribute('d',`M0,0 L${-x},${y} A${r} ${r} 0 0 1 ${x},${y}Z`);}
 
@@ -869,7 +869,7 @@ function crossGoal(a,cx,cz,dir,half,f){ // aim to cross a line (centre cx,cz; no
   if(side>-3&&Math.abs(lat)<half-1)return{x:px+CD.x*dir*7,z:pz+CD.z*dir*7};
   if(side>=-3)return{x:px-CD.x*dir*7,z:pz-CD.z*dir*7};
   return{x:px,z:pz};}
-function aiGoal(a,B){const L=a.legs[a.leg]?.k,F=FL(a),d=F.d,H=F.H;
+function aiGoal(a,B){const L=a.legs[a.leg]?.k,F=FL(a),H=F.H;let d=F.d;
   if(!L)return{x:H.c.x-CD.x*d*18-PERP.x*8,z:H.c.z-CD.z*d*18-PERP.z*8};
   const lp=linePtF(F,a.lineF);
   if(L==='start'){
@@ -880,10 +880,9 @@ function aiGoal(a,B){const L=a.legs[a.leg]?.k,F=FL(a),d=F.d,H=F.H;
     if(S.t-S.raceStart<Math.max(0,a.late*.35)&&sd<0)return{x:lp.x-CD.x*d*1.5,z:lp.z-CD.z*d*1.5,luff:true};
     if(sd>.5)return{x:lp.x-CD.x*d*6,z:lp.z-CD.z*d*6};
     return crossGoal(a,H.c.x,H.c.z,d,H.half,a.lineF);}
-  if(L==='lapIn'||L==='finish')return crossGoal(a,H.c.x,H.c.z,-d,H.half,a.lineF);
-  if(L==='lapOut')return crossGoal(a,H.c.x,H.c.z,d,H.half,a.lineF);
+  if(L==='finish')return crossGoal(a,H.c.x,H.c.z,-d,H.half,a.lineF);
   if(L==='gateOut'||L==='gateIn')return crossGoal(a,MK.gc.x,MK.gc.z,L==='gateOut'?d:-d,6,a.lineF);
-  const m=F.FM,o=2.6+a.lineF*2,WP=[{x:m.x+(PERP.x*o-CD.x*2)*d,z:m.z+(PERP.z*o-CD.z*2)*d},{x:m.x+CD.x*o*d,z:m.z+CD.z*o*d},{x:m.x-PERP.x*o*d,z:m.z-PERP.z*o*d},{x:m.x-(PERP.x*3+CD.x*9)*d,z:m.z-(PERP.z*3+CD.z*9)*d}];
+  const home=L==='home';if(home)d=-d;const m=home?H.pin:F.FM,o=2.6+a.lineF*2,WP=[{x:m.x+(PERP.x*o-CD.x*2)*d,z:m.z+(PERP.z*o-CD.z*2)*d},{x:m.x+CD.x*o*d,z:m.z+CD.z*o*d},{x:m.x-PERP.x*o*d,z:m.z-PERP.z*o*d},{x:m.x-(PERP.x*3+CD.x*9)*d,z:m.z-(PERP.z*3+CD.z*9)*d}];
   const w=WP[Math.min(a.sub,3)];if(Math.hypot(a.x-w.x,a.z-w.z)<2.6)a.sub=(a.sub+1)%4;return WP[a.sub];}
 function clearAhead(a,B,h){const sx=Math.sin(h*D2R),sz=-Math.cos(h*D2R);
   for(const L of[2.5,5,9]){const px=a.x+sx*L,pz=a.z+sz*L;if(px<X0+3||px>X1-3||pz<Z0+3)return false;if(depthAt(px,pz)<B.draft+.45)return false;
@@ -940,7 +939,7 @@ function bumps(){const all=[b,...AIS],n=all.length,racing=S.mode==='racing';
           if(o===b){toast(`${f.name} fouled you (${kc.why}) · they owe 720°`,'good');feed(`${f.name} fouled you · ${kc.why}`,'good');}
           else if(S.t-lastFoulFeed>5){lastFoulFeed=S.t;feed(`${f.name} fouled ${nm(o)} (${kc.why}) · 720°`,'info');}}}}}}
 const ORD=n=>n+(['th','st','nd','rd'][(n%100-20)%10]||['th','st','nd','rd'][n%100]||'th');
-function legTarget(r){const k=(r.legs||LEGS)[r.leg]?.k,F=FL(r);if(k==='far')return F.FM;if(k==='gateOut'||k==='gateIn')return MK.gc;return F.H.c;}
+function legTarget(r){const k=(r.legs||LEGS)[r.leg]?.k,F=FL(r);if(k==='far')return F.FM;if(k==='home')return F.H.pin;if(k==='gateOut'||k==='gateIn')return MK.gc;return F.H.c;}
 function prog(r,isMe){if(isMe?S.mode==='finished':r.finished)return 1e7-(isMe?S.finishT:r.finishT);const T=legTarget(r),x=isMe?b.x:r.x,z=isMe?b.z:r.z;return(r.leg*90+Math.max(0,90-Math.hypot(x-T.x,z-T.z)))/((r.legs?.length||5)*90);}
 function place(){const me=prog(S,true);return 1+AIS.filter(a=>prog(a,false)>me).length;}
 function bankName(x,z){let best='',bd=1e9;for(const k of BANKS){const d=Math.hypot(x-k.x,z-k.z)/Math.max(k.rx,k.rz);if(d<bd){bd=d;best=k.name;}}return bd<1.6?' on '+best:' in the shallows';}
@@ -948,19 +947,17 @@ function advance(r,px,pz,nx,nz){const L=r.legs?.[r.leg]?.k;if(!L)return null;con
   if(L==='start'){const c=cH();if(c===d){r.ocs=false;return'start';}if(c===-d&&r.ocs){r.ocs=false;return'cleared';}}
   else if(L==='gateOut'){if(crossed(px,pz,nx,nz,MK.gA,MK.gB)===d)return'gateOut';}
   else if(L==='gateIn'){if(crossed(px,pz,nx,nz,MK.gA,MK.gB)===-d)return'gateIn';}
-  else if(L==='far'){const m=F.FM,dd=Math.hypot(nx-m.x,nz-m.z),brg=Math.atan2(nx-m.x,-(nz-m.z))*R2D;
+  else if(L==='far'||L==='home'){const m=L==='home'?H.pin:F.FM,dd=Math.hypot(nx-m.x,nz-m.z),brg=Math.atan2(nx-m.x,-(nz-m.z))*R2D;
     if(dd<32){if(r.lastBrg!==null)r.roundAcc+=wrap180(brg-r.lastBrg);r.lastBrg=brg;
-      if(r.roundAcc<=-200)return'far';if(r.roundAcc>=150&&!r.wrongWarned){r.wrongWarned=true;return'wrong';}}
+      if(r.roundAcc<=-200)return L;if(r.roundAcc>=150&&!r.wrongWarned){r.wrongWarned=true;return'wrong';}}
     else r.lastBrg=null;}
-  else if(L==='lapIn'){if(cH()===-d)return'lapIn';}
-  else if(L==='lapOut'){if(cH()===d)return'lapOut';}
   else if(L==='finish'){if(cH()===-d)return'finish';}
   return null;}
 function checkCourse(px,pz,nx,nz){const ev=advance(S,px,pz,nx,nz);if(!ev)return;const F=FL(S);
   if(ev==='cleared'){toast('Cleared. Now start properly','good');feed('Returned behind the line','good');return;}
   if(ev==='wrong'){toast('Wrong way round! Keep the mark on your left','bad');return;}
   if(!S.firstAt[ev+S.fd])S.firstAt[ev+S.fd]='You';
-  legDone({start:'Started · '+fmt(S.t-S.raceStart)+' after the gun',gateOut:'Through the gate',far:'Rounded the '+F.far,gateIn:'Through the gate',lapIn:'Lap done · turn back across the line',lapOut:'Next lap under way',finish:'Finished'}[ev]);}
+  legDone({start:'Started · '+fmt(S.t-S.raceStart)+' after the gun',gateOut:'Through the gate',far:'Rounded the '+F.far,gateIn:'Through the gate',home:`Rounded the ${F.name} mark · lap 2 under way`,finish:'Finished'}[ev]);}
 function tackNow(){if(S.mode==='menu')return;const nh=wrap360(2*b.twd-b.h);b.auto=nh;}
 
 /* ---------- camera ---------- */
@@ -1106,7 +1103,7 @@ function hud(){
     if(off<va.up+6){const laid=b.side>0?wrap180(brg-(b.twd-va.up))<=0:wrap180(brg-(b.twd+va.up))>=0;
       h=laid?'You are laying the mark on this tack. Hold your course.':(shc==='warn'?'Headed: a tack now gains on the new wind.':'Upwind. Sail close-hauled and tack when the mark reaches the dashed layline.');}
     else if(off>va.down-6)h=S.boat==='tornado'?'Downwind. A cat is slow running square, so gybe between the laylines.':'Downwind. Sail a little off dead run and use the dark gust patches.';
-    else{const F=FL(S);h=L==='far'?`Leave the yellow ${F.far} on your left, then head home.`:L.startsWith('gate')?'Pass between the two red gate buoys. The other fleet comes through the other way: port gives way to starboard.':L==='finish'?`Cross the ${F.name} line between the yellow mark and the start boat.`:L==='lapIn'?'End of the lap: cross your start line heading home, then turn back for the next lap.':L==='lapOut'?'Turn round and cross your start line again to start the next lap.':'Reaching: the fastest point of sail.';}}
+    else{const F=FL(S);h=L==='far'?`Leave the yellow ${F.far} on your left, then head home.`:L.startsWith('gate')?'Pass between the two red gate buoys. The other fleet comes through the other way: port gives way to starboard.':L==='finish'?`Cross the ${F.name} line between the yellow mark and the start boat.`:L==='home'?`End of lap 1: round the yellow ${F.name} mark keeping it on your left, then head back out. No need to cross the line.`:'Reaching: the fastest point of sail.';}}
   const hE=$('hint');hE.textContent=h;hE.classList.toggle('bad',bad);
   const aE=$('alert');aE.hidden=!al;aE.textContent=al;aE.classList.toggle('danger',ad);
   drawMini();drawTrend();
