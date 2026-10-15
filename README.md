@@ -15,3 +15,5 @@ Single static `index.html`. Three.js r128 loads from jsDelivr. No build step.
 - Scroll, + / −: zoom. V: whole course. C: camera mode. L: laylines
 - R twice: restart the race
 - Touch: on-screen steer, tack, zoom and restart buttons
+
+Live: https://capelsoundinvitational.vercel.app (pushes to `main` deploy automatically)
