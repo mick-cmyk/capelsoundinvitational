@@ -1,6 +1,6 @@
 # Capel Sound Invitational 2026
 
-A 3D sailing race on the southern shore of Port Phillip. Start off Rye Pier, go out through the gate off Capel Sound, round the Rosebud mark keeping it to port, come back through the gate and finish at Rye. 19 rival boats race you in a mixed fleet of Sabres, Tornados and windsurfers. Faster classes sail 2 laps, the rest 1, and first boat home wins.
+A 3D sailing race on the southern shore of Port Phillip. Two fleets start on the same gun: one off Rye, one off Rosebud (start boats at the beach end of each line). Each fleet goes through the shared gate off Capel Sound, rounds the far mark to port, comes home through the gate and finishes on its own line. Racing rules apply from the gun (port/starboard, windward boat, clear astern): a foul costs 720°, touching a mark 360°. Boats ride a wave surface that grows with the wind. 19 rival boats race you in a mixed fleet of Sabres, Tornados and windsurfers. Faster classes sail 2 laps, the rest 1, and first boat home wins.
 
 - Boats: Sabre, Tornado or windsurfer
 - Wind presets: Light, Moderate, Fresh, Building, Shifty. The wind swings and builds or eases during the race.
