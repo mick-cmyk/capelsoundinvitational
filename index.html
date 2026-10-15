@@ -364,13 +364,13 @@ const CD={x:.973,z:-.23};{const l=Math.hypot(CD.x,CD.z);CD.x/=l;CD.z/=l;}
 const PERP={x:-CD.z,z:CD.x}; // points shoreward (south)
 const LN=(cx,cz,half)=>({c:{x:cx,z:cz},half,cb:{x:cx+PERP.x*half,z:cz+PERP.z*half},pin:{x:cx-PERP.x*half,z:cz-PERP.z*half}});
 const LINES={rye:LN(-84,-4,11),rose:LN(84,-42,10)}; // start boat sits at the beach (south) end of each line
-const MK={ryeM:{x:-108,z:-20,name:'Rye mark',col:'#f5c518'},roseM:{x:102,z:-56,name:'Rosebud mark',col:'#f5c518'},gc:{x:5,z:-14.2}};
+const MK={gc:{x:5,z:-14.2}};
 MK.gA={x:MK.gc.x+PERP.x*6,z:MK.gc.z+PERP.z*6,name:'gate buoy',col:'#ff5a36'};
 MK.gB={x:MK.gc.x-PERP.x*6,z:MK.gc.z-PERP.z*6,name:'gate buoy',col:'#ff5a36'};
-MK.ryeP=Object.assign(LINES.rye.pin,{name:'Rye start pin',col:'#ff7a1a'});MK.ryeCB=Object.assign(LINES.rye.cb,{name:'Rye start boat',boat:1});
-MK.roseP=Object.assign(LINES.rose.pin,{name:'Rosebud start pin',col:'#ff7a1a'});MK.roseCB=Object.assign(LINES.rose.cb,{name:'Rosebud start boat',boat:1});
-const MARKS=[MK.ryeM,MK.roseM,MK.ryeP,MK.roseP,MK.gA,MK.gB,MK.ryeCB,MK.roseCB];
-const FLEETS={'1':{d:1,key:'rye',H:LINES.rye,FM:MK.roseM,name:'Rye',far:'Rosebud mark'},'-1':{d:-1,key:'rosebud',H:LINES.rose,FM:MK.ryeM,name:'Rosebud',far:'Rye mark'}};
+MK.ryeP=Object.assign(LINES.rye.pin,{name:'Rye mark',col:'#f5c518'});MK.ryeCB=Object.assign(LINES.rye.cb,{name:'Rye start boat',boat:1});
+MK.roseP=Object.assign(LINES.rose.pin,{name:'Rosebud mark',col:'#f5c518'});MK.roseCB=Object.assign(LINES.rose.cb,{name:'Rosebud start boat',boat:1});
+const MARKS=[MK.ryeP,MK.roseP,MK.gA,MK.gB,MK.ryeCB,MK.roseCB];
+const FLEETS={'1':{d:1,key:'rye',H:LINES.rye,FM:MK.roseP,name:'Rye',far:'Rosebud mark'},'-1':{d:-1,key:'rosebud',H:LINES.rose,FM:MK.ryeP,name:'Rosebud',far:'Rye mark'}};
 const FL=r=>FLEETS[r.fd||1];
 const PIERS=[ // [ax,az,bx,bz,halfWidth]
   [...P(110,628),...P(122,526),.32],[...P(122,526),...P(92,521),.32],
@@ -544,8 +544,7 @@ const water=new THREE.Mesh(wgeo,waterMat);water.receiveShadow=true;water.renderO
 /* ---------- marks, start line, gate ---------- */
 function buoy(col,h=1.15,r=.4){const g=new THREE.Group();const body=new THREE.Mesh(new THREE.CylinderGeometry(r*.8,r,h,24),M(col,{roughness:.4}));body.position.y=h/2-.2;body.castShadow=true;g.add(body);
   const band=new THREE.Mesh(new THREE.CylinderGeometry(r*.86,r*.9,.14,24),M('#ffffff',{roughness:.4}));band.position.y=h*.58-.2;g.add(band);scene.add(g);return g;}
-MK.ryeM.obj=buoy(MK.ryeM.col,1.5,.5);MK.roseM.obj=buoy(MK.roseM.col,1.5,.5);
-MK.ryeP.obj=buoy(MK.ryeP.col);MK.roseP.obj=buoy(MK.roseP.col);MK.gA.obj=buoy(MK.gA.col,1,.36);MK.gB.obj=buoy(MK.gB.col,1,.36);
+MK.ryeP.obj=buoy(MK.ryeP.col,1.5,.5);MK.roseP.obj=buoy(MK.roseP.col,1.5,.5);MK.gA.obj=buoy(MK.gA.col,1,.36);MK.gB.obj=buoy(MK.gB.col,1,.36);
 function startBoat(m){
   const g=new THREE.Group();const s=new THREE.Shape();s.moveTo(0,1.6);s.quadraticCurveTo(.75,.9,.7,-1.2);s.lineTo(-.7,-1.2);s.quadraticCurveTo(-.75,.9,0,1.6);
   const hg=new THREE.ExtrudeGeometry(s,{depth:.45,bevelEnabled:false});hg.rotateX(-Math.PI/2);const hull=new THREE.Mesh(hg,M('#f2f2ee'));hull.position.y=-.1;hull.castShadow=true;g.add(hull);
@@ -560,7 +559,7 @@ function dashed(a,b,col,op=.85,y=.25){const g=new THREE.BufferGeometry().setFrom
 const ryeLine=dashed(LINES.rye.pin,LINES.rye.cb,'#ffffff',.9),roseLine=dashed(LINES.rose.pin,LINES.rose.cb,'#ffffff',.9);
 const gateLine=dashed(MK.gA,MK.gB,'#ffffff',.5);
 const markLbl=(t,m,h=2.4)=>{const s=sprite([{t,font:`800 34px ${UI_FONT}`,color:'#16202a'}],.03,{bg:'rgba(245,197,24,.95)',pad:14,radius:12},true);s.position.set(m.x,h,m.z);scene.add(s);return s;};
-const LBL={rs:markLbl('Rye start',LINES.rye.c,2.6),bs:markLbl('Rosebud start',LINES.rose.c,2.6),gate:markLbl('Gate',MK.gc,2.2),rm:markLbl('Rye mark',MK.ryeM,2.8),bm:markLbl('Rosebud mark',MK.roseM,2.8)};
+const LBL={rs:markLbl('Rye start',LINES.rye.c,2.6),bs:markLbl('Rosebud start',LINES.rose.c,2.6),gate:markLbl('Gate',MK.gc,2.2),rm:markLbl('Rye mark',MK.ryeP,2.8),bm:markLbl('Rosebud mark',MK.roseP,2.8)};
 // next-target ring + beacon
 const accentM=new THREE.MeshBasicMaterial({color:C('#f5c518'),transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
 const ringGeo=new THREE.RingGeometry(.86,1,56);ringGeo.rotateX(-Math.PI/2);
@@ -1070,12 +1069,12 @@ function hud(){
   else if(b.penDeg>0&&S.mode==='racing'){h=`Penalty: keep turning the same way, ${Math.round(Math.abs(b.penTurn))}° of ${b.penDeg}° done. Each unserved 360° costs 20 s at the finish.`;bad=true;al=`Penalty · ${b.penDeg}°`;}
   else if(S.ocs){h='Over early. Sail back across to the pre-start side, then start again.';bad=true;}
   else if(edgeWarn>0){h='That is the edge of the race area. Turn back.';}
-  else if(S.mode==='prestart'){const F=FL(S);h=sideOf(S,b.x,b.z)>0?'You are on the course side. Get back behind the line before the gun.':`Hold behind the ${F.name} line, between the orange pin and the start boat at the beach end. Cross it heading ${F.d>0?'east':'west'} after the gun.`;}
+  else if(S.mode==='prestart'){const F=FL(S);h=sideOf(S,b.x,b.z)>0?'You are on the course side. Get back behind the line before the gun.':`Hold behind the ${F.name} line, between the yellow mark and the start boat at the beach end. Cross it heading ${F.d>0?'east':'west'} after the gun.`;}
   else if(S.mode==='racing'){const L=S.legs[S.leg].k,va=vmgAngles(B,b.tws),brg=Math.atan2(dx,-dz)*R2D,off=Math.abs(wrap180(brg-b.twd));
     if(off<va.up+6){const laid=b.side>0?wrap180(brg-(b.twd-va.up))<=0:wrap180(brg-(b.twd+va.up))>=0;
       h=laid?'You are laying the mark on this tack. Hold your course.':(shc==='warn'?'Headed: a tack now gains on the new wind.':'Upwind. Sail close-hauled and tack when the mark reaches the dashed layline.');}
     else if(off>va.down-6)h=S.boat==='tornado'?'Downwind. A cat is slow running square, so gybe between the laylines.':'Downwind. Sail a little off dead run and use the dark gust patches.';
-    else{const F=FL(S);h=L==='far'?`Leave the yellow ${F.far} on your left, then head home.`:L.startsWith('gate')?'Pass between the two red gate buoys. The other fleet comes through the other way: port gives way to starboard.':L==='finish'?`Cross the ${F.name} line between the pin and the start boat.`:L==='lapIn'?'End of the lap: cross your start line heading home, then turn back for the next lap.':L==='lapOut'?'Turn round and cross your start line again to start the next lap.':'Reaching: the fastest point of sail.';}}
+    else{const F=FL(S);h=L==='far'?`Leave the yellow ${F.far} on your left, then head home.`:L.startsWith('gate')?'Pass between the two red gate buoys. The other fleet comes through the other way: port gives way to starboard.':L==='finish'?`Cross the ${F.name} line between the yellow mark and the start boat.`:L==='lapIn'?'End of the lap: cross your start line heading home, then turn back for the next lap.':L==='lapOut'?'Turn round and cross your start line again to start the next lap.':'Reaching: the fastest point of sail.';}}
   const hE=$('hint');hE.textContent=h;hE.classList.toggle('bad',bad);
   const aE=$('alert');aE.hidden=!al;aE.textContent=al;aE.classList.toggle('danger',ad);
   drawMini();drawTrend();
@@ -1163,7 +1162,7 @@ async function showBoard(elId,hl){const el=$(elId);if(!el)return;el.innerHTML=lb
 function showMenu(){S.mode='menu';modal.hidden=false;['panel','cluster','camctl','steer','tackbtn','keys','alert','bigclock'].forEach(id=>$(id).hidden=true);$('count').hidden=true;
   const best=lsGet('p2p-best')||{};
   sheet.innerHTML=`<p class="eyebrow">Southern Port Phillip · 2026</p><h2 id="sheetTitle">Capel Sound Invitational 2026</h2>
-  <p>Twenty boats, mixed fleet: Sabres, Tornados and windsurfers. Faster classes sail extra laps so the fleet finishes together, and first boat home wins. Half the fleet starts off Rye, half off Rosebud, on the same gun. Each fleet sails through the shared gate, rounds the far mark keeping it on the left, then comes home through the gate to finish on its own line. The fleets meet head-on at the gate both ways, and the racing rules apply from the gun: port gives way to starboard, windward boat keeps clear, a boat clear astern keeps clear. A foul costs two turns, touching a mark costs one. The wind swings and builds or drops as the race goes on, and every change is called out.</p>
+  <p>Twenty boats, mixed fleet: Sabres, Tornados and windsurfers. Faster classes sail extra laps so the fleet finishes together, and first boat home wins. Half the fleet starts off Rye, half off Rosebud, on the same gun. Each fleet sails through the shared gate, rounds the other fleet's start mark keeping it on the left, then comes home through the gate to finish on its own line. The fleets meet head-on at the gate both ways, and the racing rules apply from the gun: port gives way to starboard, windward boat keeps clear, a boat clear astern keeps clear. A foul costs two turns, touching a mark costs one. The wind swings and builds or drops as the race goes on, and every change is called out.</p>
   <div class="legend"><span><i style="background:#132a5e"></i>Deep</span><span><i style="background:#3a9fc0"></i>Mid</span><span><i style="background:#b8eae1"></i>Shallow, crystal clear</span><span><i style="background:#ecdfc0"></i>Sandbank</span><span><i style="background:#0a1a45;opacity:.5"></i>Gust</span></div>
   <h3>Skipper</h3><div class="names"><label>Your name<input id="pname" maxlength="24" autocomplete="nickname" placeholder="e.g. Mick R" value="${esc(ME.skipper)}"></label><label>Boat name<input id="bname" maxlength="20" placeholder="e.g. Wet Dream" value="${esc(ME.boat)}"></label></div>
   <h3>Boat</h3><div class="opts" role="radiogroup" aria-label="Boat">${Object.values(BOATS).map(B=>`<button class="opt" role="radio" aria-checked="${S.boat===B.id}" data-boat="${B.id}"><span class="th" data-th="${B.id}"></span><b>${B.name}</b><span>${B.kind}. ${B.traits.join('. ')}.</span></button>`).join('')}</div>
