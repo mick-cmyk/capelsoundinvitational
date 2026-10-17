@@ -860,15 +860,14 @@ function placeFleet(){const sk=FLEET_DEF.map((_,i)=>.9+.088*i/(FLEET_DEF.length-
   const other=AIS.slice(0,10),mine=AIS.slice(10);other.forEach(a=>a.fd=-S.fleet);mine.forEach(a=>a.fd=S.fleet);
   for(const grp of[other,mine])grp.forEach((a,j)=>{const n=grp.length,F=FL(a),f=.1+.8*((j*7)%n)/(n-1),lp=linePtF(F,f),back=7+Math.random()*9,i=AIS.indexOf(a);
     Object.assign(a,{x:lp.x-CD.x*F.d*back+(Math.random()-.5)*2,z:lp.z-CD.z*F.d*back+(Math.random()-.5)*2,lineF:f,skill:sk[i],late:-.4+Math.random()*4.4,hold:j%2,planT:Math.random()*.4,
-      leg:0,roundAcc:0,lastBrg:null,ocs:false,wrongWarned:false,finished:false,finishT:0,sub:0,aground:false,depth:5,penDeg:0,penTurn:0,avoidT:0,lastTouch:-9});
+      leg:0,roundAcc:0,lastBrg:null,ocs:false,wrongWarned:false,finished:false,finishT:0,sub:0,aground:false,depth:5,penDeg:0,penTurn:0,avoidT:0,lastTouch:-9,penGo:false,penWait:0,ghost:0,chkT:0,trail:[],escT:0,wpSub:-1});
     const w=W.dir,c1=wrap360(w+100),c2=wrap360(w-100);a.h=Math.abs(wrap180(c1-350))<Math.abs(wrap180(c2-350))?c1:c2;a.hd=a.h;a.side=wrap180(w-a.h)>=0?1:-1;a.flip=a.side;
     const wa=windAt(a.x,a.z);a.tws=wa.s;a.twd=wa.d;a.v=polar(BOATS[a.cls],100,wa.s)*.5;a.depth=depthAt(a.x,a.z);a.legs=makeLegs((S.laps||lapsAt(presetWind(S.wind)))[a.cls],a.fd);});}
 function crossGoal(a,cx,cz,dir,half,f){ // aim to cross a line (centre cx,cz; normal CD*dir) at fraction f of its half-width
   const side=((a.x-cx)*CD.x+(a.z-cz)*CD.z)*dir,lat=(a.x-cx)*PERP.x+(a.z-cz)*PERP.z,o=(f-.5)*2*half*.75,px=cx+PERP.x*o,pz=cz+PERP.z*o;
   if(side>1.2)return{x:px-CD.x*dir*7,z:pz-CD.z*dir*7};
   if(side>-3&&Math.abs(lat)<half-1)return{x:px+CD.x*dir*7,z:pz+CD.z*dir*7};
-  if(side>=-3)return{x:px-CD.x*dir*7,z:pz-CD.z*dir*7};
-  return{x:px,z:pz};}
+  return{x:px-CD.x*dir*3,z:pz-CD.z*dir*3};} // line up just short of the gap, then cross (old version sent boats back 7 and they orbited)
 function aiGoal(a,B){const L=a.legs[a.leg]?.k,F=FL(a),H=F.H;let d=F.d;
   if(!L)return{x:H.c.x-CD.x*d*18-PERP.x*8,z:H.c.z-CD.z*d*18-PERP.z*8};
   const lp=linePtF(F,a.lineF);
@@ -881,11 +880,13 @@ function aiGoal(a,B){const L=a.legs[a.leg]?.k,F=FL(a),H=F.H;let d=F.d;
     if(sd>.5)return{x:lp.x-CD.x*d*6,z:lp.z-CD.z*d*6};
     return crossGoal(a,H.c.x,H.c.z,d,H.half,a.lineF);}
   if(L==='finish')return crossGoal(a,H.c.x,H.c.z,-d,H.half,a.lineF);
-  if(L==='gateOut'||L==='gateIn')return crossGoal(a,MK.gc.x,MK.gc.z,L==='gateOut'?d:-d,6,a.lineF);
+  if(L==='gateOut'||L==='gateIn'){const dir=L==='gateOut'?d:-d;return crossGoal(a,MK.gc.x,MK.gc.z,dir,6,dir>0?.55+.42*a.lineF:.03+.42*a.lineF);}
   const home=L==='home';if(home)d=-d;const m=home?H.pin:F.FM,o=2.6+a.lineF*2,WP=[{x:m.x+(PERP.x*o-CD.x*2)*d,z:m.z+(PERP.z*o-CD.z*2)*d},{x:m.x+CD.x*o*d,z:m.z+CD.z*o*d},{x:m.x-PERP.x*o*d,z:m.z-PERP.z*o*d},{x:m.x-(PERP.x*3+CD.x*9)*d,z:m.z-(PERP.z*3+CD.z*9)*d}];
-  const w=WP[Math.min(a.sub,3)];if(Math.hypot(a.x-w.x,a.z-w.z)<2.6)a.sub=(a.sub+1)%4;return WP[a.sub];}
+  // rounding: approach via the entry point, then orbit the mark anticlockwise (mark to port), always aiming ~65° further round
+  const md=Math.hypot(a.x-m.x,a.z-m.z);if(md>11&&(a.roundAcc||0)>-90)return WP[0];
+  const tb=(Math.atan2(a.x-m.x,-(a.z-m.z))*R2D-65)*D2R,rr=o+1;return{x:m.x+Math.sin(tb)*rr,z:m.z-Math.cos(tb)*rr};}
 function clearAhead(a,B,h){const sx=Math.sin(h*D2R),sz=-Math.cos(h*D2R);
-  for(const L of[2.5,5,9]){const px=a.x+sx*L,pz=a.z+sz*L;if(px<X0+3||px>X1-3||pz<Z0+3)return false;if(depthAt(px,pz)<B.draft+.45)return false;
+  for(const L of[1.2,2.5,5,9]){const px=a.x+sx*L,pz=a.z+sz*L;if(px<X0+3||px>X1-3||pz<Z0+3)return false;if(depthAt(px,pz)<B.draft+.45)return false;
     for(const p of PIERS)if(segDist(px,pz,p[0],p[1],p[2],p[3])<p[4]+1.2)return false;
     for(const m of MARKS)if(Math.hypot(px-m.x,pz-m.z)<(m.boat?2:1.3))return false;}
   return true;}
@@ -898,13 +899,21 @@ function aiPlan(a,B,g){const brg=Math.atan2(g.x-a.x,-(g.z-a.z))*R2D,dist=Math.hy
   const bs=wrap180(a.twd-best)>=0?1:-1;
   if(bs!==a.side&&same!==null&&dist>4&&bv<sv*1.22+.3)return same;
   return best;}
+function escHead(a,B){let bh=a.h,bs=-1e9;for(let h=0;h<360;h+=15){if(Math.abs(wrap180(a.twd-h))<B.noGo+8)continue;let sc=0;
+  for(const L of[2,4,7]){const px=a.x+Math.sin(h*D2R)*L,pz=a.z-Math.cos(h*D2R)*L;sc+=Math.min(depthAt(px,pz),4);for(const p of PIERS)if(segDist(px,pz,p[0],p[1],p[2],p[3])<p[4]+1.5)sc-=20;if(px<X0+3||px>X1-3||pz<Z0+3)sc-=20;for(const m of MARKS)if(Math.hypot(px-m.x,pz-m.z)<(m.boat?2.2:1.6))sc-=20;}
+  for(const o of AIS)if(o!==a&&Math.hypot(o.x-a.x,o.z-a.z)<6)sc-=Math.max(0,Math.cos((Math.atan2(o.x-a.x,-(o.z-a.z))*R2D-h)*D2R))*3;
+  sc-=Math.abs(wrap180(h-a.h))/90;if(sc>bs){bs=sc;bh=h;}}return bh;}
 function aiStep(a,dt,B){const w=windAt(a.x,a.z);a.tws=w.s;a.twd=w.d;
   let ev;
-  if(a.penDeg>0&&S.mode==='racing'){ev=sail(a,B,a.penDir||1,dt,a.skill,null);a.penTurn+=ev.dh;if(Math.abs(a.penTurn)>=a.penDeg-20){a.penDeg=0;a.penTurn=0;}}
+  if(a.penDeg>0&&S.mode==='racing'&&!a.penGo){a.penWait=(a.penWait||0)+dt;if(a.penWait>15||(![b,...AIS].some(o=>o!==a&&!o.finished&&Math.hypot(o.x-a.x,o.z-a.z)<3.5)&&!MARKS.some(m=>Math.hypot(m.x-a.x,m.z-a.z)<4.5)&&a.depth>B.draft+.8)){a.penGo=true;a.penWait=0;}}
+  if(a.penDeg>0&&S.mode==='racing'&&a.penGo){a.lastBrg=null;ev=sail(a,B,a.penDir||1,dt,a.skill,null);a.penTurn+=ev.dh;if(Math.abs(a.penTurn)>=a.penDeg-20){a.penDeg=0;a.penTurn=0;a.penGo=false;}}
   else{
     a.planT-=dt;if(a.planT<=0){a.planT=.35;const g=aiGoal(a,B);a.hd=g.luff&&Math.hypot(a.x-g.x,a.z-g.z)<4?wrap360(a.twd-(a.side>0?28:-28)):aiPlan(a,B,g);}
-    if(S.mode==='racing'&&!a.finished){a.avoidT-=dt;if(a.avoidT<=0)avoid(a,B);}
-    const hd=a.avoidT>0?a.avoidH:a.hd,e=wrap180(hd-a.h),st=clamp(e/10,-1,1);
+    if(S.mode==='racing'&&!a.finished){a.chkT=(a.chkT||0)+dt;if(a.chkT>5){a.chkT=0;(a.trail=a.trail||[]).push([a.x,a.z]);if(a.trail.length>4)a.trail.shift();
+      if(a.trail.length===4&&Math.hypot(a.trail[0][0]-a.x,a.trail[0][1]-a.z)<3.5&&!(a.penDeg>0&&a.penGo)&&(a.aground||a.depth<B.draft+.4||AIS.some(o=>o!==a&&!o.finished&&Math.hypot(o.x-a.x,o.z-a.z)<5)||Math.hypot(b.x-a.x,b.z-a.z)<5)){a.ghost=7;a.escT=4;a.escH=escHead(a,B);a.trail.length=0;a.lineF=Math.random();}}
+      if(a.escT>0)a.escT-=dt;
+      if(a.ghost>0)a.ghost-=dt;a.avoidT-=dt;if(a.avoidT<=0&&!(a.ghost>0))avoid(a,B);}
+    const hd=a.escT>0?a.escH:a.avoidT>0?a.avoidH:a.hd,e=wrap180(hd-a.h),st=clamp(e/10,-1,1);
     ev=sail(a,B,st,dt,a.skill,hd);}
   if(ev.mark&&S.mode==='racing'&&!a.finished&&!a.penDeg&&S.t-a.lastTouch>3){a.lastTouch=S.t;a.penDeg=360;a.penDir=-a.side||1;}
   if(ev.moved&&!a.finished&&(S.mode==='racing'||S.mode==='finished')){const r=advance(a,ev.px,ev.pz,a.x,a.z);
@@ -928,10 +937,11 @@ function avoid(a,B){const vax=Math.sin(a.h*D2R)*a.v*K,vaz=-Math.cos(a.h*D2R)*a.v
     if(best!==null){a.avoidH=best;a.avoidT=1.1;}return;}}
 const lastBump={},lastFoul={};let lastFoulFeed=-9;
 function bumps(){const all=[b,...AIS],n=all.length,racing=S.mode==='racing';
-  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const p=all[i],q=all[j],dx=q.x-p.x,dz=q.z-p.z;if(dx>1.6||dx<-1.6||dz>1.6||dz<-1.6)continue;const d=Math.hypot(dx,dz),R=1.6;
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const p=all[i],q=all[j],dx=q.x-p.x,dz=q.z-p.z;if((p.ghost>0&&q!==b)||(q.ghost>0&&p!==b))continue;if(dx>1.6||dx<-1.6||dz>1.6||dz<-1.6)continue;const d=Math.hypot(dx,dz),R=1.6;
     if(d<R&&d>1e-4){const push=(R-d)/2,ux=dx/d,uz=dz/d;p.x-=ux*push;p.z-=uz*push;q.x+=ux*push;q.z+=uz*push;
       const key=i+'-'+j;if(!lastBump[key]||S.t-lastBump[key]>3){lastBump[key]=S.t;p.v*=.75;q.v*=.75;
         if(!racing||p.finished||q.finished||(p.penDeg||0)>0||(q.penDeg||0)>0||S.t-(lastFoul[key]||-99)<12){if(i===0)toast('Bumped '+q.name);continue;}
+        if(p!==b&&q!==b&&(Math.hypot(p.x-MK.gc.x,p.z-MK.gc.z)<9||MARKS.some(m=>Math.hypot(p.x-m.x,p.z-m.z)<7))){lastFoul[key]=S.t;continue;} // rivals give each other room at marks and the gate
         lastFoul[key]=S.t;
         const kc=keepClear(p,q),f=kc.who,o=f===p?q:p,nm=x=>x===b?(ME.boat||'you'):x.name;
         if(f===b)penalty(`Foul on ${o.name}: you were the ${kc.why}`,720);
